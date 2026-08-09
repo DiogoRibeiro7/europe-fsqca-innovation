@@ -24,10 +24,15 @@ def _minterm(row: pd.Series, conditions: list[str]) -> list[int]:
 def _format_expression(expression: sp.logic.boolalg.Boolean, conditions: list[str]) -> str:
     """Convert a SymPy DNF expression to conventional QCA notation."""
     symbol_map = {str(sp.Symbol(condition)): condition for condition in conditions}
+    order = {condition: index for index, condition in enumerate(conditions)}
     if expression is sp.true:
         return "1"
     if expression is sp.false:
         return "0"
+
+    def sort_key(text: str) -> tuple[int, str]:
+        condition = text[1:] if text.startswith("~") else text
+        return (order.get(condition, len(order)), text)
 
     def render(node: sp.logic.boolalg.Boolean) -> str:
         if isinstance(node, sp.Symbol):
@@ -35,9 +40,9 @@ def _format_expression(expression: sp.logic.boolalg.Boolean, conditions: list[st
         if isinstance(node, sp.Not):
             return f"~{render(node.args[0])}"
         if isinstance(node, sp.And):
-            return "*".join(render(arg) for arg in node.args)
+            return "*".join(sorted((render(arg) for arg in node.args), key=sort_key))
         if isinstance(node, sp.Or):
-            return " + ".join(render(arg) for arg in node.args)
+            return " + ".join(sorted((render(arg) for arg in node.args), key=sort_key))
         return str(node)
 
     return render(expression)
