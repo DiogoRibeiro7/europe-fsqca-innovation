@@ -18,7 +18,12 @@ from euro_fsqca.data.regions import attach_regions, load_region_map
 from euro_fsqca.qca.fuzzy import fuzzy_and, fuzzy_not, fuzzy_or, sufficiency_fit
 from euro_fsqca.qca.minimize import BooleanSolution, minimize_truth_table
 from euro_fsqca.qca.necessity import necessity_table
-from euro_fsqca.qca.truth_table import TruthTableThresholds, build_truth_table
+from euro_fsqca.qca.truth_table import (
+    TruthTableThresholds,
+    build_truth_table,
+    contradictory_rows,
+    truth_table_diagnostics,
+)
 from euro_fsqca.sets.calibration import direct_calibrate
 from euro_fsqca.sets.composites import build_composite
 
@@ -115,6 +120,15 @@ def _run_group(
 
     necessity.to_csv(group_dir / "necessity.csv", index=False)
     truth.to_csv(group_dir / "truth_table.csv", index=False)
+    thresholds = _thresholds(config)
+    truth_table_diagnostics(truth, thresholds=thresholds).to_csv(
+        group_dir / "truth_table_diagnostics.csv",
+        index=False,
+    )
+    contradictory_rows(truth, thresholds=thresholds).to_csv(
+        group_dir / "contradictory_rows.csv",
+        index=False,
+    )
     solution_rows: list[dict[str, object]] = []
     for solution in (conservative, parsimonious):
         membership = _membership_from_sympy(frame, solution.sympy_expression)
