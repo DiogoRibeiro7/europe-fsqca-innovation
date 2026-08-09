@@ -12,9 +12,13 @@ For every specification, store the conservative and parsimonious solution expres
 
 A simple stability score for a solution expression is its frequency across admissible specifications.
 
+String frequency is not enough for calibration sensitivity. Also record signed-literal Jaccard similarity against the main result.
+
 ## Calibration sensitivity
 
 Perturb full-inclusion and full-exclusion anchors around the fixed crossover. Do not move anchors so far that the semantic meaning of the fuzzy set changes.
+
+Classify structural changes as `same_configuration`, `one_added_condition`, `one_removed_condition`, `polarity_change`, or `unrelated_configuration`.
 
 ## Regional robustness
 
