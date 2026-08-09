@@ -25,6 +25,10 @@ def test_end_to_end_demo(tmp_path: Path) -> None:
     )
 
     assert summary["n_complete_calibrated"] == 500
+    assert (output / "qca_specification.json").exists()
     assert (output / "europe" / "truth_table.csv").exists()
+    assert (output / "europe" / "truth_table_diagnostics.csv").exists()
+    assert (output / "europe" / "contradictory_rows.csv").exists()
+    assert (output / "europe" / "solution_terms.csv").exists()
     assert (output / "portability.csv").exists()
     assert (output / "fractional_logit.csv").exists()

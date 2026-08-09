@@ -107,20 +107,20 @@ def _run_group(
     conditions = list(config.conditions)
     group_dir = output_dir / label
     group_dir.mkdir(parents=True, exist_ok=True)
+    thresholds = _thresholds(config)
 
     necessity = necessity_table(frame, conditions=conditions, outcome=outcome)
     truth = build_truth_table(
         frame,
         conditions=conditions,
         outcome=outcome,
-        thresholds=_thresholds(config),
+        thresholds=thresholds,
     )
     conservative = minimize_truth_table(truth, conditions=conditions, kind="conservative")
     parsimonious = minimize_truth_table(truth, conditions=conditions, kind="parsimonious")
 
     necessity.to_csv(group_dir / "necessity.csv", index=False)
     truth.to_csv(group_dir / "truth_table.csv", index=False)
-    thresholds = _thresholds(config)
     truth_table_diagnostics(truth, thresholds=thresholds).to_csv(
         group_dir / "truth_table_diagnostics.csv",
         index=False,
@@ -163,6 +163,9 @@ def _run_group(
                     "solution": solution.kind,
                     "term": term_index,
                     "configuration": json.dumps(literals, sort_keys=True),
+                    "n_relevant_establishments": int((membership > 0.5).sum()),
+                    "country_distribution": _distribution_json(frame, "country", membership),
+                    "regional_distribution": _distribution_json(frame, "macroregion", membership),
                     "consistency": fit.consistency,
                     "coverage": fit.coverage,
                     "pri": fit.pri,
@@ -173,6 +176,9 @@ def _run_group(
     return {
         "label": label,
         "n": len(frame),
+        "frequency_cutoff": thresholds.frequency,
+        "consistency_cutoff": thresholds.consistency,
+        "pri_cutoff": thresholds.pri,
         "conservative": conservative.expression,
         "parsimonious": parsimonious.expression,
         "n_positive_rows": int(truth["positive"].sum()),
@@ -205,6 +211,20 @@ def run_analysis(
 
     outcome = config.outcome_name
     conditions = list(config.conditions)
+    qca_specification = {
+        "conditions": conditions,
+        "outcome": outcome,
+        "frequency_cutoff": config.truth_table.frequency_cutoff,
+        "consistency_cutoff": config.truth_table.consistency_cutoff,
+        "pri_cutoff": config.truth_table.pri_cutoff,
+        "logical_remainder_policy": {
+            "conservative": "observed positive rows only",
+            "parsimonious": "unobserved rows treated as logical remainders",
+        },
+        "calibration_scope": "common Europe-wide anchors",
+    }
+    with (target / "qca_specification.json").open("w", encoding="utf-8") as stream:
+        json.dump(qca_specification, stream, indent=2)
     summaries: list[dict[str, Any]] = []
     europe = _run_group(
         calibrated, config=config, outcome=outcome, label="europe", output_dir=target
@@ -304,3 +324,11 @@ def run_analysis(
     with (target / "summary.json").open("w", encoding="utf-8") as stream:
         json.dump(summary_payload, stream, indent=2, default=str)
     return summary_payload
+
+
+def _distribution_json(frame: pd.DataFrame, column: str, membership: np.ndarray) -> str:
+    if column not in frame.columns:
+        return "{}"
+    relevant = pd.Series(membership > 0.5, index=frame.index)
+    counts = frame.loc[relevant, column].value_counts(dropna=False).to_dict()
+    return json.dumps({str(key): int(value) for key, value in counts.items()}, sort_keys=True)
