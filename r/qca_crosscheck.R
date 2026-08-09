@@ -45,6 +45,19 @@ capture.output(tt, file = file.path(output_dir, "truth_table.txt"))
 capture.output(conservative, file = file.path(output_dir, "conservative.txt"))
 capture.output(parsimonious, file = file.path(output_dir, "parsimonious.txt"))
 
+truth_rows <- as.data.frame(tt$tt)
+write.csv(truth_rows, file.path(output_dir, "truth_table.csv"), row.names = FALSE)
+
+solution_summary <- data.frame(
+  solution = c("conservative", "parsimonious"),
+  expression = c(
+    paste(capture.output(conservative), collapse = "\n"),
+    paste(capture.output(parsimonious), collapse = "\n")
+  ),
+  stringsAsFactors = FALSE
+)
+write.csv(solution_summary, file.path(output_dir, "solutions.csv"), row.names = FALSE)
+
 # Intermediate solutions require directional expectations. Add them only after
 # the theory section freezes expectations; do not infer expectations from results.
 message("QCA cross-check complete: ", output_dir)
