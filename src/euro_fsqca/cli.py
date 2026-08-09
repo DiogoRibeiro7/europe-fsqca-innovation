@@ -7,6 +7,7 @@ from typing import Annotated
 
 import typer
 
+from euro_fsqca.analysis.constructs import write_construct_diagnostics
 from euro_fsqca.config import load_config
 from euro_fsqca.data.harmonisation import build_exclusion_log, harmonisation_report
 from euro_fsqca.data.io import read_table, write_table
@@ -114,6 +115,19 @@ def check_harmonisation(
     write_table(build_exclusion_log(frame, []), exclusion_output)
     typer.echo(f"Harmonisation report written to {report_output}")
     typer.echo(f"Exclusion log written to {exclusion_output}")
+
+
+@app.command("construct-diagnostics")
+def diagnose_constructs(
+    input: Annotated[Path, typer.Option("--input", help="Pre-calibration table.")],
+    config: Annotated[Path, typer.Option("--config")] = Path("configs/analysis.yml"),
+    output_dir: Annotated[Path, typer.Option("--output-dir")] = Path("outputs/constructs"),
+) -> None:
+    """Write pre-calibration construct diagnostics."""
+    frame = read_table(input)
+    analysis_config = load_config(config)
+    write_construct_diagnostics(frame, config=analysis_config, output_dir=output_dir)
+    typer.echo(f"Construct diagnostics written to {output_dir}")
 
 
 @app.command()
