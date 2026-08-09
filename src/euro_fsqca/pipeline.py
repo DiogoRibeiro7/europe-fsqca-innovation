@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 import sympy as sp
 
-from euro_fsqca.analysis.portability import evaluate_portability
+from euro_fsqca.analysis.portability import directed_portability, evaluate_portability
 from euro_fsqca.analysis.regression import fit_fractional_logit
 from euro_fsqca.analysis.robustness import anchor_sweep, threshold_sweep
 from euro_fsqca.config import AnalysisConfig, SetSpec
@@ -226,6 +226,7 @@ def run_analysis(
     with (target / "qca_specification.json").open("w", encoding="utf-8") as stream:
         json.dump(qca_specification, stream, indent=2)
     summaries: list[dict[str, Any]] = []
+    directed_configurations: dict[str, list[dict[str, bool]]] = {}
     europe = _run_group(
         calibrated, config=config, outcome=outcome, label="europe", output_dir=target
     )
@@ -242,6 +243,9 @@ def run_analysis(
         summaries.append(
             {key: value for key, value in result.items() if key != "conservative_object"}
         )
+        region_terms = _terms_from_solution(result["conservative_object"], conditions)
+        if region_terms:
+            directed_configurations[str(region)] = region_terms
     pd.DataFrame(_regional_comparison_rows(summaries)).to_csv(
         target / "regional_comparison.csv",
         index=False,
@@ -293,6 +297,15 @@ def run_analysis(
         )
     )
     portability.to_csv(target / "portability.csv", index=False)
+    directed_table, directed_matrix, directed_network = directed_portability(
+        calibrated,
+        configurations=directed_configurations,
+        outcome=outcome,
+        region_column="macroregion",
+    )
+    directed_table.to_csv(target / "portability_directed.csv", index=False)
+    directed_matrix.to_csv(target / "portability_matrix.csv", index=False)
+    directed_network.to_csv(target / "portability_network.csv", index=False)
 
     # Threshold sensitivity on the European sample.
     if config.robustness.enabled:
