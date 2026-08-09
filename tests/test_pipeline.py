@@ -32,4 +32,7 @@ def test_end_to_end_demo(tmp_path: Path) -> None:
     assert (output / "europe" / "solution_terms.csv").exists()
     assert (output / "regional_comparison.csv").exists()
     assert (output / "portability.csv").exists()
+    assert (output / "portability_directed.csv").exists()
+    assert (output / "portability_matrix.csv").exists()
+    assert (output / "portability_network.csv").exists()
     assert (output / "fractional_logit.csv").exists()

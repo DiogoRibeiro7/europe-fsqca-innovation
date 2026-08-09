@@ -31,10 +31,17 @@ def evaluate_portability(
     for region, group in frame.groupby(region_column, observed=True):
         membership = configuration_membership(group, literals)
         fit = sufficiency_fit(membership.to_numpy(), group[outcome].to_numpy(dtype=float))
+        relevant = membership > 0.5
+        contradiction = relevant & (group[outcome] <= 0.5)
         rows.append(
             {
                 "region": str(region),
                 "n": len(group),
+                "available_cases": int(relevant.sum()),
+                "availability": float(relevant.mean()) if len(relevant) else 0.0,
+                "contradiction_rate": float(contradiction.sum() / relevant.sum())
+                if int(relevant.sum())
+                else float("nan"),
                 "consistency": fit.consistency,
                 "coverage": fit.coverage,
                 "pri": fit.pri,
@@ -45,3 +52,74 @@ def evaluate_portability(
     sd = float(np.std(consistencies, ddof=0)) if len(consistencies) else float("nan")
     spread = float(np.ptp(consistencies)) if len(consistencies) else float("nan")
     return PortabilitySummary(table=table, consistency_sd=sd, consistency_range=spread)
+
+
+def directed_portability(
+    frame: pd.DataFrame,
+    *,
+    configurations: dict[str, list[dict[str, bool]]],
+    outcome: str,
+    region_column: str = "macroregion",
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Evaluate source-region configurations in every other target region."""
+    rows: list[dict[str, object]] = []
+    regions = sorted(str(region) for region in frame[region_column].dropna().unique())
+    for source_region, source_terms in configurations.items():
+        for term_index, literals in enumerate(source_terms, start=1):
+            for target_region in regions:
+                if target_region == source_region:
+                    continue
+                group = frame[frame[region_column].astype(str) == target_region]
+                membership = configuration_membership(group, literals)
+                fit = sufficiency_fit(membership.to_numpy(), group[outcome].to_numpy(dtype=float))
+                relevant = membership > 0.5
+                contradiction = relevant & (group[outcome] <= 0.5)
+                available_cases = int(relevant.sum())
+                rows.append(
+                    {
+                        "source_region": source_region,
+                        "source_term": term_index,
+                        "target_region": target_region,
+                        "configuration": _format_literals(literals),
+                        "target_n": int(len(group)),
+                        "available_cases": available_cases,
+                        "availability": float(relevant.mean()) if len(relevant) else 0.0,
+                        "consistency": fit.consistency,
+                        "coverage": fit.coverage,
+                        "pri": fit.pri,
+                        "contradiction_rate": float(contradiction.sum() / available_cases)
+                        if available_cases
+                        else float("nan"),
+                    }
+                )
+    table = pd.DataFrame(rows)
+    if table.empty:
+        return table, pd.DataFrame(), pd.DataFrame()
+    matrix = table.pivot_table(
+        index="source_region",
+        columns="target_region",
+        values="consistency",
+        aggfunc="mean",
+    ).reset_index()
+    network = table.rename(
+        columns={
+            "source_region": "source",
+            "target_region": "target",
+            "consistency": "weight",
+        }
+    )[
+        [
+            "source",
+            "target",
+            "source_term",
+            "configuration",
+            "weight",
+            "availability",
+            "available_cases",
+        ]
+    ]
+    return table, matrix, network
+
+
+def _format_literals(literals: dict[str, bool]) -> str:
+    return "*".join(f"{'' if present else '~'}{name}" for name, present in sorted(literals.items()))
