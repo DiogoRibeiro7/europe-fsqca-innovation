@@ -8,6 +8,7 @@ from typing import Annotated
 import typer
 
 from euro_fsqca.config import load_config
+from euro_fsqca.data.harmonisation import build_exclusion_log, harmonisation_report
 from euro_fsqca.data.io import read_table, write_table
 from euro_fsqca.data.mapping import (
     MappingValidationError,
@@ -95,6 +96,24 @@ def validate_mapping(
         if require_main_ready:
             raise typer.Exit(1)
     typer.echo(f"Mapping coverage written to {output}")
+
+
+@app.command("check-harmonisation")
+def check_harmonisation(
+    input: Annotated[Path, typer.Option("--input", help="Harmonised analytical table.")],
+    report_output: Annotated[Path, typer.Option("--report-output")] = Path(
+        "outputs/data/harmonisation_report.csv"
+    ),
+    exclusion_output: Annotated[Path, typer.Option("--exclusion-output")] = Path(
+        "outputs/data/exclusion_log.csv"
+    ),
+) -> None:
+    """Write harmonisation diagnostics and an exclusion-log template."""
+    frame = read_table(input)
+    write_table(harmonisation_report(frame), report_output)
+    write_table(build_exclusion_log(frame, []), exclusion_output)
+    typer.echo(f"Harmonisation report written to {report_output}")
+    typer.echo(f"Exclusion log written to {exclusion_output}")
 
 
 @app.command()
