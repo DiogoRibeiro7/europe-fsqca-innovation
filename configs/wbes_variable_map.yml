@@ -1,66 +1,101 @@
 # Semantic mapping worksheet, intentionally not hard-coded to one WBES release.
-# Fill the `source_columns` after inspecting the exact EU-27 microdata release.
+# Fill `source_variables` after inspecting the exact EU-27 microdata release.
 # Keep this file under version control so variable decisions are auditable.
 constructs:
   DIG_raw:
+    canonical_project_name: DIG_raw
+    construct: DIG
     concept: High digital and technological capability
-    source_columns: []
+    verification_status: unavailable
+    source_variables: []
     candidate_content:
       - website or digital presence
       - technology adoption
       - ICT-enabled business practices
-    rule: TODO after schema inspection
+    transformation: TODO after schema audit
+    missing_value_rule: TODO after schema audit
+    notes: Requires exact question wording and country coverage.
 
   HC_raw:
+    canonical_project_name: HC_raw
+    construct: HC
     concept: High human-capital capability
-    source_columns: []
+    verification_status: unavailable
+    source_variables: []
     candidate_content:
       - skilled permanent workers
       - worker training
       - education or skill intensity
-    rule: TODO after schema inspection
+    transformation: TODO after schema audit
+    missing_value_rule: TODO after schema audit
+    notes: Requires exact question wording and country coverage.
 
   FIN_raw:
+    canonical_project_name: FIN_raw
+    construct: FIN
     concept: Strong financial capability and low financing constraint
-    source_columns: []
+    verification_status: unavailable
+    source_variables: []
     candidate_content:
       - access to bank finance
       - working-capital finance
       - credit constraint indicators
-    rule: TODO after schema inspection
+    transformation: TODO after schema audit
+    missing_value_rule: TODO after schema audit
+    notes: Requires exact question wording and country coverage.
 
   INT_raw:
+    canonical_project_name: INT_raw
+    construct: INT
     concept: High internationalisation
-    source_columns: []
+    verification_status: unavailable
+    source_variables: []
     candidate_content:
       - direct exports
       - indirect exports
       - export intensity
-    rule: TODO after schema inspection
+    transformation: TODO after schema audit
+    missing_value_rule: TODO after schema audit
+    notes: Requires exact question wording and country coverage.
 
   MGT_raw:
+    canonical_project_name: MGT_raw
+    construct: MGT
     concept: Strong management capability
-    source_columns: []
+    verification_status: unavailable
+    source_variables: []
     candidate_content:
       - management-practice indicators
       - performance monitoring
       - target setting
-    rule: TODO after schema inspection
+    transformation: TODO after schema audit
+    missing_value_rule: TODO after schema audit
+    notes: Requires exact question wording and country coverage.
 
   EXTK_raw:
+    canonical_project_name: EXTK_raw
+    construct: EXTK
     concept: Strong external knowledge integration
-    source_columns: []
+    verification_status: unavailable
+    source_variables: []
     candidate_content:
       - foreign ownership
       - international quality certification
       - technology licensed from foreign-owned firms
-    rule: TODO after schema inspection
+    transformation: TODO after schema audit
+    missing_value_rule: TODO after schema audit
+    notes: Requires exact question wording and country coverage.
 
   INN_raw:
+    canonical_project_name: INN_raw
+    construct: INN
     concept: High innovation performance
-    source_columns: []
+    verification_status: unavailable
+    source_variables: []
     candidate_content:
       - product innovation
       - process innovation
       - innovation-related activity intensity
-    rule: TODO after schema inspection
+    transformation: TODO after schema audit
+    missing_value_rule: TODO after schema audit
+    notes: Requires exact question wording and country coverage.
