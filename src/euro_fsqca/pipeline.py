@@ -242,6 +242,10 @@ def run_analysis(
         summaries.append(
             {key: value for key, value in result.items() if key != "conservative_object"}
         )
+    pd.DataFrame(_regional_comparison_rows(summaries)).to_csv(
+        target / "regional_comparison.csv",
+        index=False,
+    )
 
     # Causal asymmetry: repeat the full analysis for the negated outcome.
     negative = calibrated.copy()
@@ -332,3 +336,31 @@ def _distribution_json(frame: pd.DataFrame, column: str, membership: np.ndarray)
     relevant = pd.Series(membership > 0.5, index=frame.index)
     counts = frame.loc[relevant, column].value_counts(dropna=False).to_dict()
     return json.dumps({str(key): int(value) for key, value in counts.items()}, sort_keys=True)
+
+
+def _regional_comparison_rows(summaries: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    europe = next((summary for summary in summaries if summary["label"] == "europe"), None)
+    if europe is None:
+        return []
+    total_n = int(europe["n"])
+    rows: list[dict[str, Any]] = []
+    for summary in summaries:
+        if summary["label"] == "europe":
+            continue
+        n_cases = int(summary["n"])
+        rows.append(
+            {
+                "region": str(summary["label"]).removeprefix("region_"),
+                "n_cases": n_cases,
+                "relative_prevalence": n_cases / total_n if total_n else 0.0,
+                "frequency_cutoff": summary["frequency_cutoff"],
+                "consistency_cutoff": summary["consistency_cutoff"],
+                "pri_cutoff": summary["pri_cutoff"],
+                "conservative_solution": summary["conservative"],
+                "parsimonious_solution": summary["parsimonious"],
+                "n_positive_rows": summary["n_positive_rows"],
+                "conservative_matches_europe": summary["conservative"] == europe["conservative"],
+                "parsimonious_matches_europe": summary["parsimonious"] == europe["parsimonious"],
+            }
+        )
+    return rows
