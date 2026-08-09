@@ -17,6 +17,7 @@ The pipeline writes:
 - `portability_directed.csv`: directed source-region to target-region checks.
 - `portability_matrix.csv`: region-pair consistency matrix.
 - `portability_network.csv`: network-ready source, target, weight, availability, and case-count data.
+- `country_portability.csv`: country-level evaluation of Europe-wide and regional configurations.
 
 ## Metrics
 
@@ -27,3 +28,5 @@ The pipeline writes:
 - `contradiction_rate`: relevant target cases with outcome membership at or below `0.5`.
 
 Portability is directed: `A -> B` is not assumed to equal `B -> A`.
+
+Country-level diagnostics do not run standalone country QCA. They evaluate configurations learned from Europe or the relevant region and flag weak samples rather than hiding them.
