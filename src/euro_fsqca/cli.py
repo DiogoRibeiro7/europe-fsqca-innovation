@@ -9,6 +9,8 @@ import typer
 
 from euro_fsqca.config import load_config
 from euro_fsqca.data.io import read_table, write_table
+from euro_fsqca.data.provenance import ManifestValidationError, raise_for_manifest_errors
+from euro_fsqca.data.provenance import validate_manifest as validate_source_manifest
 from euro_fsqca.data.schema import schema_report
 from euro_fsqca.demo import generate_demo
 from euro_fsqca.pipeline import run_analysis
@@ -37,6 +39,21 @@ def demo(
     frame = generate_demo(n=n, seed=seed)
     write_table(frame, output)
     typer.echo(f"Synthetic demo data written to {output}")
+
+
+@app.command("validate-data")
+def validate_data(
+    manifest: Annotated[Path, typer.Option("--manifest")] = Path("data/manifest.csv"),
+    root: Annotated[Path, typer.Option("--root")] = Path("data/raw"),
+) -> None:
+    """Validate source files recorded in the data manifest."""
+    try:
+        report = validate_source_manifest(manifest, root=root)
+        raise_for_manifest_errors(report)
+    except ManifestValidationError as exc:
+        typer.echo(f"Data validation failed: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    typer.echo(f"Data validation passed: {len(report.entries)} source files checked")
 
 
 @app.command()
