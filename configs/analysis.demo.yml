@@ -1,0 +1,41 @@
+case_id: firm_id
+country_column: country
+regions_file: configs/regions.yml
+primary_region_scheme: macro3
+
+conditions:
+  DIG:
+    source: digital_raw
+    anchors: {exclusion: 30, crossover: 50, inclusion: 70, idm: 0.95}
+  HC:
+    source: human_raw
+    anchors: {exclusion: 30, crossover: 50, inclusion: 70, idm: 0.95}
+  FIN:
+    source: finance_raw
+    anchors: {exclusion: 30, crossover: 50, inclusion: 70, idm: 0.95}
+  INT:
+    source: international_raw
+    anchors: {exclusion: 30, crossover: 50, inclusion: 70, idm: 0.95}
+  MGT:
+    source: management_raw
+    anchors: {exclusion: 30, crossover: 50, inclusion: 70, idm: 0.95}
+  EXTK:
+    source: external_knowledge_raw
+    anchors: {exclusion: 30, crossover: 50, inclusion: 70, idm: 0.95}
+
+outcome:
+  INN:
+    source: innovation_raw
+    anchors: {exclusion: 30, crossover: 50, inclusion: 70, idm: 0.95}
+
+truth_table:
+  frequency_cutoff: 8
+  consistency_cutoff: 0.80
+  pri_cutoff: 0.50
+
+robustness:
+  enabled: true
+  consistency_cutoffs: [0.78, 0.80, 0.82, 0.85]
+  pri_cutoffs: [0.50, 0.55, 0.60]
+  frequency_cutoffs: [5, 8, 12]
+  anchor_shift_proportions: [-0.05, 0.0, 0.05]

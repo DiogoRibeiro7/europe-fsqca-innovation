@@ -1,0 +1,9 @@
+cff-version: 1.2.0
+message: "If you use this research code, please cite the repository and the associated paper when available."
+title: "Configurational Pathways to Firm Innovation Across Europe"
+type: software
+authors:
+  - family-names: Ribeiro
+    given-names: Diogo
+version: 0.1.0
+date-released: 2026-08-09

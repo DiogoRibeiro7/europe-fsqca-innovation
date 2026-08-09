@@ -1,0 +1,66 @@
+# Semantic mapping worksheet, intentionally not hard-coded to one WBES release.
+# Fill the `source_columns` after inspecting the exact EU-27 microdata release.
+# Keep this file under version control so variable decisions are auditable.
+constructs:
+  DIG_raw:
+    concept: High digital and technological capability
+    source_columns: []
+    candidate_content:
+      - website or digital presence
+      - technology adoption
+      - ICT-enabled business practices
+    rule: TODO after schema inspection
+
+  HC_raw:
+    concept: High human-capital capability
+    source_columns: []
+    candidate_content:
+      - skilled permanent workers
+      - worker training
+      - education or skill intensity
+    rule: TODO after schema inspection
+
+  FIN_raw:
+    concept: Strong financial capability and low financing constraint
+    source_columns: []
+    candidate_content:
+      - access to bank finance
+      - working-capital finance
+      - credit constraint indicators
+    rule: TODO after schema inspection
+
+  INT_raw:
+    concept: High internationalisation
+    source_columns: []
+    candidate_content:
+      - direct exports
+      - indirect exports
+      - export intensity
+    rule: TODO after schema inspection
+
+  MGT_raw:
+    concept: Strong management capability
+    source_columns: []
+    candidate_content:
+      - management-practice indicators
+      - performance monitoring
+      - target setting
+    rule: TODO after schema inspection
+
+  EXTK_raw:
+    concept: Strong external knowledge integration
+    source_columns: []
+    candidate_content:
+      - foreign ownership
+      - international quality certification
+      - technology licensed from foreign-owned firms
+    rule: TODO after schema inspection
+
+  INN_raw:
+    concept: High innovation performance
+    source_columns: []
+    candidate_content:
+      - product innovation
+      - process innovation
+      - innovation-related activity intensity
+    rule: TODO after schema inspection

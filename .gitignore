@@ -1,0 +1,23 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+dist/
+build/
+coverage.xml
+.coverage
+htmlcov/
+.DS_Store
+
+# WBES microdata may be access-controlled. Never commit raw or derived case-level data.
+data/raw/*
+!data/raw/.gitkeep
+data/interim/*
+!data/interim/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+
+results/*
+!results/.gitkeep

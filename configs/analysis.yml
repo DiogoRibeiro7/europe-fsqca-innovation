@@ -1,0 +1,45 @@
+# WBES analysis template.
+# Do NOT run this unchanged. First run `euro-fsqca inspect` on the acquired
+# microdata, map WBES variables to the canonical analytical columns below, and
+# justify calibration anchors in docs/calibration_protocol.md.
+case_id: firm_id
+country_column: country
+regions_file: configs/regions.yml
+primary_region_scheme: macro3
+
+conditions:
+  DIG:
+    source: DIG_raw
+    anchors: {exclusion: 0, crossover: 0.5, inclusion: 1, idm: 0.95}
+  HC:
+    source: HC_raw
+    anchors: {exclusion: 0, crossover: 0.5, inclusion: 1, idm: 0.95}
+  FIN:
+    source: FIN_raw
+    anchors: {exclusion: 0, crossover: 0.5, inclusion: 1, idm: 0.95}
+  INT:
+    source: INT_raw
+    anchors: {exclusion: 0, crossover: 0.5, inclusion: 1, idm: 0.95}
+  MGT:
+    source: MGT_raw
+    anchors: {exclusion: 0, crossover: 0.5, inclusion: 1, idm: 0.95}
+  EXTK:
+    source: EXTK_raw
+    anchors: {exclusion: 0, crossover: 0.5, inclusion: 1, idm: 0.95}
+
+outcome:
+  INN:
+    source: INN_raw
+    anchors: {exclusion: 0, crossover: 0.5, inclusion: 1, idm: 0.95}
+
+truth_table:
+  frequency_cutoff: 10
+  consistency_cutoff: 0.80
+  pri_cutoff: 0.50
+
+robustness:
+  enabled: true
+  consistency_cutoffs: [0.78, 0.80, 0.82, 0.85, 0.88]
+  pri_cutoffs: [0.50, 0.55, 0.60, 0.65]
+  frequency_cutoffs: [5, 10, 15, 20]
+  anchor_shift_proportions: [-0.10, -0.05, 0.0, 0.05, 0.10]

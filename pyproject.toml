@@ -1,0 +1,59 @@
+[tool.poetry]
+name = "europe-fsqca-innovation"
+version = "0.1.0"
+description = "Reproducible fsQCA study of configurational pathways to firm innovation across European macroregions."
+authors = ["Diogo Ribeiro"]
+readme = "README.md"
+packages = [{ include = "euro_fsqca", from = "src" }]
+
+[tool.poetry.dependencies]
+python = ">=3.11,<3.14"
+numpy = ">=2.0,<2.4"
+pandas = "^2.2"
+scipy = "^1.14"
+statsmodels = "^0.14"
+sympy = "^1.13"
+pyyaml = "^6.0"
+pydantic = "^2.8"
+typer = "^0.12"
+pyreadstat = "^1.2"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3"
+pytest-cov = "^5.0"
+ruff = "^0.6"
+mypy = "^1.11"
+pandas-stubs = "^2.2"
+types-pyyaml = "^6.0.12.20260724"
+
+[tool.poetry.scripts]
+euro-fsqca = "euro_fsqca.cli:app"
+
+[build-system]
+requires = ["poetry-core>=1.9.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_unused_ignores = true
+plugins = []
+
+[[tool.mypy.overrides]]
+module = ["sympy", "sympy.*", "statsmodels", "statsmodels.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+addopts = "-q --disable-warnings --maxfail=1"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["euro_fsqca"]
+branch = true

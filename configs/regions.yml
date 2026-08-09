@@ -1,0 +1,69 @@
+# Primary analytical taxonomy. This is a research classification, not a claim that
+# these are official geographic regions. It is designed to compare mature
+# Northern/Western systems, Southern Europe, and Central/Eastern post-transition systems.
+macro3:
+  north_west:
+    - Austria
+    - Belgium
+    - Denmark
+    - Finland
+    - France
+    - Germany
+    - Ireland
+    - Luxembourg
+    - Netherlands
+    - Sweden
+  south:
+    - Cyprus
+    - Greece
+    - Italy
+    - Malta
+    - Portugal
+    - Spain
+  central_east:
+    - Bulgaria
+    - Croatia
+    - Czechia
+    - Estonia
+    - Hungary
+    - Latvia
+    - Lithuania
+    - Poland
+    - Romania
+    - Slovakia
+    - Slovenia
+
+# Four-bloc robustness classification. The Baltic states move north; several
+# Adriatic countries move south. Cyprus is retained with Southern EU economies.
+eu4_robustness:
+  north:
+    - Denmark
+    - Estonia
+    - Finland
+    - Ireland
+    - Latvia
+    - Lithuania
+    - Sweden
+  west:
+    - Austria
+    - Belgium
+    - France
+    - Germany
+    - Luxembourg
+    - Netherlands
+  south:
+    - Croatia
+    - Cyprus
+    - Greece
+    - Italy
+    - Malta
+    - Portugal
+    - Slovenia
+    - Spain
+  east:
+    - Bulgaria
+    - Czechia
+    - Hungary
+    - Poland
+    - Romania
+    - Slovakia

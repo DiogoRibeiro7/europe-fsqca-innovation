@@ -1,0 +1,45 @@
+{
+  "groups": [
+    {
+      "label": "europe",
+      "n": 6000,
+      "conservative": "DIG*HC*MGT + DIG*EXTK*HC*INT + EXTK*FIN*HC*INT*MGT",
+      "parsimonious": "DIG*HC*MGT + DIG*EXTK*HC*INT + EXTK*FIN*HC*INT*MGT",
+      "n_positive_rows": 11
+    },
+    {
+      "label": "region_central_east",
+      "n": 1927,
+      "conservative": "DIG*HC*MGT + EXTK*HC*INT",
+      "parsimonious": "DIG*HC*MGT + EXTK*HC*INT",
+      "n_positive_rows": 14
+    },
+    {
+      "label": "region_north_west",
+      "n": 2558,
+      "conservative": "DIG*HC*INT + DIG*HC*MGT",
+      "parsimonious": "DIG*HC*INT + DIG*HC*MGT",
+      "n_positive_rows": 12
+    },
+    {
+      "label": "region_south",
+      "n": 1515,
+      "conservative": "DIG*HC*MGT + FIN*HC*MGT",
+      "parsimonious": "DIG*HC*MGT + FIN*HC*MGT",
+      "n_positive_rows": 12
+    }
+  ],
+  "negative_outcome": {
+    "label": "europe_negative_outcome",
+    "n": 6000,
+    "conservative": "~DIG*~HC + ~EXTK*~HC + ~FIN*~HC + ~HC*~INT + ~HC*~MGT + ~DIG*~EXTK*~MGT + ~DIG*~FIN*~INT + ~DIG*~INT*~MGT + ~EXTK*~INT*~MGT + ~FIN*~INT*~MGT",
+    "parsimonious": "~DIG*~HC + ~EXTK*~HC + ~FIN*~HC + ~HC*~INT + ~HC*~MGT + ~DIG*~EXTK*~MGT + ~DIG*~FIN*~INT + ~DIG*~INT*~MGT + ~EXTK*~INT*~MGT + ~FIN*~INT*~MGT",
+    "n_positive_rows": 42
+  },
+  "n_complete_calibrated": 6000,
+  "regions": {
+    "north_west": 2558,
+    "central_east": 1927,
+    "south": 1515
+  }
+}

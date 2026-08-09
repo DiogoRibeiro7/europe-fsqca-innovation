@@ -1,0 +1,20 @@
+\section{Methods}
+
+The analysis uses fuzzy-set Qualitative Comparative Analysis. Raw constructs are
+calibrated using substantively justified full-exclusion, crossover, and
+full-inclusion anchors. The same anchors are applied across Europe in the main
+specification. The workflow includes necessity analysis, truth-table analysis,
+Boolean minimisation, analysis of the negated outcome, cross-regional portability
+of solution terms, region-specific minimisation, and robustness tests.
+
+For a sufficient configuration $X$ and outcome $Y$, consistency is evaluated as
+\[
+\operatorname{Cons}(X \Rightarrow Y)=
+\frac{\sum_i \min(X_i,Y_i)}{\sum_i X_i}.
+\]
+
+Coverage is
+\[
+\operatorname{Cov}(X \Rightarrow Y)=
+\frac{\sum_i \min(X_i,Y_i)}{\sum_i Y_i}.
+\]
