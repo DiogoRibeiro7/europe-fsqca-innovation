@@ -11,7 +11,7 @@ from euro_fsqca.config import load_config
 from euro_fsqca.data.io import read_table, write_table
 from euro_fsqca.data.provenance import ManifestValidationError, raise_for_manifest_errors
 from euro_fsqca.data.provenance import validate_manifest as validate_source_manifest
-from euro_fsqca.data.schema import schema_report
+from euro_fsqca.data.schema import schema_audit_from_manifest, schema_report
 from euro_fsqca.demo import generate_demo
 from euro_fsqca.pipeline import run_analysis
 
@@ -54,6 +54,19 @@ def validate_data(
         typer.echo(f"Data validation failed: {exc}", err=True)
         raise typer.Exit(1) from exc
     typer.echo(f"Data validation passed: {len(report.entries)} source files checked")
+
+
+@app.command("schema-audit")
+def audit_schema(
+    manifest: Annotated[Path, typer.Option("--manifest")] = Path("data/manifest.csv"),
+    root: Annotated[Path, typer.Option("--root")] = Path("data/raw"),
+    output: Annotated[Path, typer.Option("--output")] = Path("outputs/data/schema_audit.csv"),
+    max_values: Annotated[int, typer.Option("--max-values", min=1)] = 20,
+) -> None:
+    """Compare schemas across all source files recorded in the manifest."""
+    frame = schema_audit_from_manifest(manifest, raw_root=root, max_values=max_values)
+    write_table(frame, output)
+    typer.echo(f"Schema audit written to {output}")
 
 
 @app.command()
