@@ -9,6 +9,12 @@ import typer
 
 from euro_fsqca.config import load_config
 from euro_fsqca.data.io import read_table, write_table
+from euro_fsqca.data.mapping import (
+    MappingValidationError,
+    load_variable_mapping,
+    validate_variable_mapping,
+    write_mapping_coverage,
+)
 from euro_fsqca.data.provenance import ManifestValidationError, raise_for_manifest_errors
 from euro_fsqca.data.provenance import validate_manifest as validate_source_manifest
 from euro_fsqca.data.schema import schema_audit_from_manifest, schema_report
@@ -67,6 +73,28 @@ def audit_schema(
     frame = schema_audit_from_manifest(manifest, raw_root=root, max_values=max_values)
     write_table(frame, output)
     typer.echo(f"Schema audit written to {output}")
+
+
+@app.command("validate-mapping")
+def validate_mapping(
+    mapping: Annotated[Path, typer.Option("--mapping")] = Path("configs/wbes_variable_map.yml"),
+    output: Annotated[Path, typer.Option("--output")] = Path("outputs/data/mapping_coverage.csv"),
+    require_main_ready: Annotated[bool, typer.Option("--require-main-ready")] = False,
+) -> None:
+    """Validate WBES variable mappings and write construct coverage."""
+    try:
+        mappings = load_variable_mapping(mapping)
+        report = validate_variable_mapping(mappings, require_main_ready=require_main_ready)
+    except MappingValidationError as exc:
+        typer.echo(f"Mapping validation failed: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    write_mapping_coverage(mappings, output)
+    if report.errors:
+        for error in report.errors:
+            typer.echo(f"Mapping validation warning: {error}", err=True)
+        if require_main_ready:
+            raise typer.Exit(1)
+    typer.echo(f"Mapping coverage written to {output}")
 
 
 @app.command()
