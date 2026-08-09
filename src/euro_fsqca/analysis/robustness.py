@@ -231,3 +231,88 @@ def anchor_sweep(
             "parsimonious_solution"
         ].transform("size") / len(result)
     return result
+
+
+def leave_one_group_out(
+    calibrated: pd.DataFrame,
+    *,
+    config: AnalysisConfig,
+    outcome: str,
+    group_column: str,
+    min_remaining_cases: int = 30,
+) -> pd.DataFrame:
+    """Run Europe-wide QCA after removing each group in a column."""
+    if group_column not in calibrated.columns:
+        return pd.DataFrame(
+            columns=[
+                "group_column",
+                "removed_group",
+                "n_removed",
+                "n_remaining",
+                "skipped",
+                "reason",
+                "conservative_solution",
+                "conservative_similarity",
+                "conservative_change",
+            ]
+        )
+    conditions = list(config.conditions)
+    thresholds = TruthTableThresholds(
+        frequency=config.truth_table.frequency_cutoff,
+        consistency=config.truth_table.consistency_cutoff,
+        pri=config.truth_table.pri_cutoff,
+    )
+    main_table = build_truth_table(
+        calibrated,
+        conditions=conditions,
+        outcome=outcome,
+        thresholds=thresholds,
+    )
+    main_solution = minimize_truth_table(main_table, conditions=conditions, kind="conservative")
+    rows: list[dict[str, object]] = []
+    for group in sorted(calibrated[group_column].dropna().astype(str).unique()):
+        mask = calibrated[group_column].astype(str) == group
+        subset = calibrated.loc[~mask].copy()
+        skipped = len(subset) < min_remaining_cases
+        if skipped:
+            rows.append(
+                {
+                    "group_column": group_column,
+                    "removed_group": group,
+                    "n_removed": int(mask.sum()),
+                    "n_remaining": int(len(subset)),
+                    "skipped": True,
+                    "reason": "remaining sample below minimum",
+                    "conservative_solution": "",
+                    "conservative_similarity": float("nan"),
+                    "conservative_change": "unavailable",
+                }
+            )
+            continue
+        table = build_truth_table(
+            subset,
+            conditions=conditions,
+            outcome=outcome,
+            thresholds=thresholds,
+        )
+        solution = minimize_truth_table(table, conditions=conditions, kind="conservative")
+        rows.append(
+            {
+                "group_column": group_column,
+                "removed_group": group,
+                "n_removed": int(mask.sum()),
+                "n_remaining": int(len(subset)),
+                "skipped": False,
+                "reason": "",
+                "conservative_solution": solution.expression,
+                "conservative_similarity": signed_literal_jaccard(
+                    main_solution.expression,
+                    solution.expression,
+                ),
+                "conservative_change": classify_solution_change(
+                    main_solution.expression,
+                    solution.expression,
+                ),
+            }
+        )
+    return pd.DataFrame(rows)

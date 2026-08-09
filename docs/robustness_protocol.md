@@ -27,6 +27,8 @@ Classify structural changes as `same_configuration`, `one_added_condition`, `one
 2. Four-bloc alternative taxonomy
 3. Where sample sizes permit, country leave-one-out checks within each macroregion
 
+The pipeline writes `leave_one_country_out.csv` when robustness is enabled. Sector and firm-size leave-one-out files are written when those grouping columns are available in the calibrated analysis table.
+
 ## Outcome asymmetry
 
 Always rerun the full sufficiency analysis for `~INN`; never infer low-innovation configurations by simply negating high-innovation solutions.
