@@ -11,6 +11,7 @@ Sweep combinations of:
 For every specification, store the conservative and parsimonious solution expressions.
 
 A simple stability score for a solution expression is its frequency across admissible specifications.
+Also record retained rows, contradictory rows, term counts, and signed-literal similarity to the main solution.
 
 String frequency is not enough for calibration sensitivity. Also record signed-literal Jaccard similarity against the main result.
 

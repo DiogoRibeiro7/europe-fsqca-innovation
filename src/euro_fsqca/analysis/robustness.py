@@ -9,7 +9,7 @@ import pandas as pd
 
 from euro_fsqca.config import AnalysisConfig
 from euro_fsqca.qca.minimize import minimize_truth_table
-from euro_fsqca.qca.truth_table import TruthTableThresholds, build_truth_table
+from euro_fsqca.qca.truth_table import TruthTableThresholds, build_truth_table, contradictory_rows
 
 
 def signed_literals(expression: str) -> set[str]:
@@ -69,6 +69,22 @@ def threshold_sweep(
     """Sweep truth-table thresholds and record solution stability."""
     conditions = list(config.conditions)
     rows: list[dict[str, object]] = []
+    main_thresholds = TruthTableThresholds(
+        frequency=config.truth_table.frequency_cutoff,
+        consistency=config.truth_table.consistency_cutoff,
+        pri=config.truth_table.pri_cutoff,
+    )
+    main_table = build_truth_table(
+        calibrated,
+        conditions=conditions,
+        outcome=outcome,
+        thresholds=main_thresholds,
+    )
+    main_conservative = minimize_truth_table(
+        main_table,
+        conditions=conditions,
+        kind="conservative",
+    )
     grid = product(
         config.robustness.consistency_cutoffs,
         config.robustness.pri_cutoffs,
@@ -93,9 +109,23 @@ def threshold_sweep(
                 "consistency_cutoff": consistency,
                 "pri_cutoff": pri,
                 "frequency_cutoff": frequency,
+                "n_rows_retained": int((table["frequency"].astype(int) >= frequency).sum()),
                 "n_positive_rows": int(table["positive"].sum()),
+                "n_contradictory_rows": int(
+                    len(contradictory_rows(table, thresholds=thresholds))
+                ),
+                "n_conservative_terms": _term_count(conservative.expression),
+                "n_parsimonious_terms": _term_count(parsimonious.expression),
                 "conservative_solution": conservative.expression,
                 "parsimonious_solution": parsimonious.expression,
+                "conservative_similarity": signed_literal_jaccard(
+                    main_conservative.expression,
+                    conservative.expression,
+                ),
+                "conservative_change": classify_solution_change(
+                    main_conservative.expression,
+                    conservative.expression,
+                ),
             }
         )
     result = pd.DataFrame(rows)
@@ -107,6 +137,12 @@ def threshold_sweep(
             "parsimonious_solution"
         ].transform("size") / len(result)
     return result
+
+
+def _term_count(expression: str) -> int:
+    if expression in {"", "0", "1"}:
+        return 0
+    return len([term for term in expression.split("+") if term.strip()])
 
 
 def anchor_sweep(
