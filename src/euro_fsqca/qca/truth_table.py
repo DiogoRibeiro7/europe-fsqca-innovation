@@ -72,3 +72,46 @@ def build_truth_table(
         )
         rows.append(row)
     return pd.DataFrame(rows)
+
+
+def contradictory_rows(
+    truth_table: pd.DataFrame,
+    *,
+    thresholds: TruthTableThresholds,
+) -> pd.DataFrame:
+    """Return observed rows with enough cases but insufficient outcome consistency."""
+    required = {"frequency", "consistency", "positive", "observed"}
+    missing = required - set(truth_table.columns)
+    if missing:
+        raise KeyError(f"missing truth-table columns: {sorted(missing)}")
+    mask = (
+        truth_table["observed"].astype(bool)
+        & (truth_table["frequency"].astype(int) >= thresholds.frequency)
+        & ~truth_table["positive"].astype(bool)
+        & (truth_table["consistency"].astype(float) < thresholds.consistency)
+    )
+    return truth_table.loc[mask].copy()
+
+
+def truth_table_diagnostics(
+    truth_table: pd.DataFrame,
+    *,
+    thresholds: TruthTableThresholds,
+) -> pd.DataFrame:
+    """Summarise observed, positive, contradictory, and remainder rows."""
+    required = {"frequency", "positive", "observed"}
+    missing = required - set(truth_table.columns)
+    if missing:
+        raise KeyError(f"missing truth-table columns: {sorted(missing)}")
+    observed = truth_table["observed"].astype(bool)
+    positive = truth_table["positive"].astype(bool)
+    contradictions = contradictory_rows(truth_table, thresholds=thresholds)
+    return pd.DataFrame(
+        [
+            {"metric": "total_rows", "value": int(len(truth_table))},
+            {"metric": "observed_rows", "value": int(observed.sum())},
+            {"metric": "positive_rows", "value": int(positive.sum())},
+            {"metric": "contradictory_rows", "value": int(len(contradictions))},
+            {"metric": "logical_remainders", "value": int((~observed).sum())},
+        ]
+    )
