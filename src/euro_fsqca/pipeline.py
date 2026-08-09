@@ -16,7 +16,7 @@ from euro_fsqca.analysis.portability import (
     evaluate_portability,
 )
 from euro_fsqca.analysis.regression import fit_fractional_logit
-from euro_fsqca.analysis.robustness import anchor_sweep, threshold_sweep
+from euro_fsqca.analysis.robustness import anchor_sweep, leave_one_group_out, threshold_sweep
 from euro_fsqca.config import AnalysisConfig, SetSpec
 from euro_fsqca.data.regions import attach_regions, load_region_map
 from euro_fsqca.qca.fuzzy import fuzzy_and, fuzzy_not, fuzzy_or, sufficiency_fit
@@ -327,6 +327,20 @@ def run_analysis(
         anchor_sweep(frame, config=config, calibrator=calibrate_frame).to_csv(
             target / "anchor_sensitivity.csv", index=False
         )
+        leave_one_group_out(
+            calibrated,
+            config=config,
+            outcome=outcome,
+            group_column=config.country_column,
+        ).to_csv(target / "leave_one_country_out.csv", index=False)
+        for optional_group in ["sector", "size_class"]:
+            if optional_group in calibrated.columns:
+                leave_one_group_out(
+                    calibrated,
+                    config=config,
+                    outcome=outcome,
+                    group_column=optional_group,
+                ).to_csv(target / f"leave_one_{optional_group}_out.csv", index=False)
 
     # Net-effect comparison. Fuzzy outcomes are modeled with a fractional logit.
     regression = fit_fractional_logit(calibrated, outcome=outcome, conditions=conditions)
