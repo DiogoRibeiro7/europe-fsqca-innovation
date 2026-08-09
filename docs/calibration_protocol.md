@@ -30,3 +30,22 @@ This allows asymmetric distances between exclusion, crossover, and inclusion whi
 The robustness design should perturb outer anchors while holding the substantive crossover fixed. Report whether core solution terms survive reasonable perturbations.
 
 The current Python threshold sweep varies truth-table thresholds. Anchor perturbation is exposed in the package and should be activated after the empirical WBES anchors are frozen.
+
+## Diagnostics
+
+Use:
+
+```bash
+poetry run euro-fsqca calibration-diagnostics \
+  --input data/processed/wbes_eu27_analysis.csv \
+  --config configs/analysis.yml \
+  --output-dir outputs/calibration
+```
+
+Generated files:
+
+- `calibration_summary.csv`
+- `calibration_country_summary.csv`
+- `calibration_region_summary.csv`
+
+The summary checks that fuzzy memberships stay within `[0, 1]`, that the calibrated mapping is monotone, and that the same configured anchors are applied before regional comparison.
