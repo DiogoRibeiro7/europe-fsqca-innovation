@@ -121,5 +121,44 @@ def directed_portability(
     return table, matrix, network
 
 
+def country_portability(
+    frame: pd.DataFrame,
+    *,
+    configurations: dict[str, list[dict[str, bool]]],
+    outcome: str,
+    country_column: str = "country",
+    min_cases: int = 30,
+) -> pd.DataFrame:
+    """Evaluate known configurations within each country."""
+    rows: list[dict[str, object]] = []
+    for source, source_terms in configurations.items():
+        for term_index, literals in enumerate(source_terms, start=1):
+            for country, group in frame.groupby(country_column, observed=True):
+                membership = configuration_membership(group, literals)
+                fit = sufficiency_fit(membership.to_numpy(), group[outcome].to_numpy(dtype=float))
+                relevant = membership > 0.5
+                contradiction = relevant & (group[outcome] <= 0.5)
+                available_cases = int(relevant.sum())
+                rows.append(
+                    {
+                        "source": source,
+                        "term": term_index,
+                        "configuration": _format_literals(literals),
+                        "country": str(country),
+                        "n": int(len(group)),
+                        "weak_sample": int(len(group)) < min_cases,
+                        "available_cases": available_cases,
+                        "availability": float(relevant.mean()) if len(relevant) else 0.0,
+                        "consistency": fit.consistency,
+                        "coverage": fit.coverage,
+                        "pri": fit.pri,
+                        "contradiction_rate": float(contradiction.sum() / available_cases)
+                        if available_cases
+                        else float("nan"),
+                    }
+                )
+    return pd.DataFrame(rows)
+
+
 def _format_literals(literals: dict[str, bool]) -> str:
     return "*".join(f"{'' if present else '~'}{name}" for name, present in sorted(literals.items()))

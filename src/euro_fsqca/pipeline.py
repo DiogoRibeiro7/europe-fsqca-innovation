@@ -10,7 +10,11 @@ import numpy as np
 import pandas as pd
 import sympy as sp
 
-from euro_fsqca.analysis.portability import directed_portability, evaluate_portability
+from euro_fsqca.analysis.portability import (
+    country_portability,
+    directed_portability,
+    evaluate_portability,
+)
 from euro_fsqca.analysis.regression import fit_fractional_logit
 from euro_fsqca.analysis.robustness import anchor_sweep, threshold_sweep
 from euro_fsqca.config import AnalysisConfig, SetSpec
@@ -266,6 +270,7 @@ def run_analysis(
     # Portability of each pan-European conservative term across the same regional calibration.
     portability_rows: list[pd.DataFrame] = []
     terms = _terms_from_solution(europe["conservative_object"], conditions)
+    country_configurations: dict[str, list[dict[str, bool]]] = {"europe": terms}
     for index, literals in enumerate(terms, start=1):
         summary = evaluate_portability(
             calibrated,
@@ -306,6 +311,13 @@ def run_analysis(
     directed_table.to_csv(target / "portability_directed.csv", index=False)
     directed_matrix.to_csv(target / "portability_matrix.csv", index=False)
     directed_network.to_csv(target / "portability_network.csv", index=False)
+    country_configurations.update(directed_configurations)
+    country_portability(
+        calibrated,
+        configurations=country_configurations,
+        outcome=outcome,
+        country_column=config.country_column,
+    ).to_csv(target / "country_portability.csv", index=False)
 
     # Threshold sensitivity on the European sample.
     if config.robustness.enabled:
