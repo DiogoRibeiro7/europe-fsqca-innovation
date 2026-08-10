@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "europe-fsqca-innovation"
-version = "0.1.0"
+version = "0.2.0"
 description = "Reproducible fsQCA study of configurational pathways to firm innovation across European macroregions."
 authors = ["Diogo Ribeiro"]
 readme = "README.md"

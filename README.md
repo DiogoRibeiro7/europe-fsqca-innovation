@@ -53,6 +53,24 @@ The same Europe-wide calibration anchors are used in every bloc. A four-bloc alt
 └── tests/                   Unit and integration tests
 ```
 
+## Pipeline architecture
+
+```text
+Licensed WBES files
+        |
+        v
+data/manifest.csv ---> schema audit ---> variable mapping
+        |                                  |
+        v                                  v
+analytical table ---> construct diagnostics ---> calibration diagnostics
+        |                                             |
+        v                                             v
+Europe-wide QCA ---> regional QCA ---> portability and robustness checks
+        |                                             |
+        v                                             v
+tables, figures, R validation, manuscript, release report
+```
+
 ## Important data-access note
 
 World Bank Enterprise Survey microdata should not be committed to this repository. Obtain the required EU-27 files through the World Bank Enterprise Surveys / Microdata Library under the applicable access terms, place them under `data/raw/`, and run the schema inspector before mapping variables.
@@ -174,7 +192,7 @@ The LaTeX scaffold under `paper/` mirrors the empirical workflow. It is intentio
 
 ## Status
 
-`v0.1.0` is a complete methodological scaffold with a runnable synthetic demonstration. The remaining empirical dependency is the exact EU-27 WBES microdata release and its verified variable mapping.
+`v0.2.0` is a complete methodological scaffold with a runnable synthetic demonstration, study specification, diagnostics, manuscript shell, review records, and release report. The remaining empirical dependency is the exact EU-27 WBES microdata release, verified variable mapping, and justified calibration anchors.
 
 ## Docker
 

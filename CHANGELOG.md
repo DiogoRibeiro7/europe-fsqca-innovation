@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.0 — 2026-08-10
+
+- Added data provenance, schema audit, mapping validation, and harmonisation checks.
+- Added construct, calibration, truth-table, diversity, necessity, complementarity, robustness, and portability diagnostics.
+- Added country-level portability, sample omission, bootstrap stability, synthetic scenario checks, and research figures.
+- Added generated-table metadata, study-level specification validation, and reproducibility commands.
+- Added Python package typing metadata and R validation environment setup.
+- Added data-gated manuscript sections, novelty review, internal review, response record, and release report.
+- Preserved WBES raw-data separation and did not report synthetic output as evidence.
+
 ## 0.1.0 — 2026-08-09
 
 - Added typed Python fsQCA research pipeline.
