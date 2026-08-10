@@ -48,6 +48,14 @@ When `survey.strata_column` is configured the resampling is stratified, which re
 
 Use fixed seeds, retain failed replicates with a failure reason, and keep replicate counts small in CI.
 
+## Weighted truth-table appendix
+
+`exploratory/weighted_truth_table_comparison.csv`, written only when
+`robustness.weighted_truth_table_exploration` is enabled. It compares row
+inclusion under case counting, weight mass and effective sample size. It is an
+appendix: no reported configuration comes from it. See
+`docs/qca_engine_policy.md`.
+
 ## Portability uncertainty
 
 `portability_bootstrap.csv`. Bootstraps both source-solution discovery and target-region evaluation. See `docs/portability_analysis.md`.

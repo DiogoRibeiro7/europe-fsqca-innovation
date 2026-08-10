@@ -88,7 +88,7 @@ Three estimands are reported side by side:
 | `firm_population` | the establishment population in the sampling frame |
 | `equal_country` | countries weighted equally, so large member states do not determine the pooled solution |
 
-Truth-table row inclusion can use case counts, weight mass, or Kish's effective sample size. With weights enabled, prefer the effective sample size: an over-sampled stratum should not be able to buy row inclusion with weight mass that carries no extra information.
+Truth-table row inclusion counts sampled establishments, as the standard procedure does. Weight mass and Kish's effective sample size are reported per row for inspection, but they do not gate a reported solution: a non-standard `n.cut` would not be comparable with published fsQCA and could not be reproduced by the canonical R engine. Weighting is used to test whether the discovered configurations survive the design, which is the more informative question. See `docs/qca_engine_policy.md`.
 
 ## Survey timing
 

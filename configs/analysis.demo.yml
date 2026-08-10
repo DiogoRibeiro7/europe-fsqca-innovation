@@ -81,7 +81,6 @@ truth_table:
   frequency_cutoff: 8
   consistency_cutoff: 0.80
   pri_cutoff: 0.50
-  frequency_basis: cases
 
 robustness:
   enabled: true
@@ -92,5 +91,6 @@ robustness:
   bootstrap_replicates: 25
   portability_bootstrap_replicates: 25
   portability_discovery_replicates: 10
+  weighted_truth_table_exploration: true
   alternative_region_scheme: eu4_robustness
   random_seed: 42

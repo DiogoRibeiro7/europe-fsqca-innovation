@@ -48,6 +48,7 @@ from euro_fsqca.qca.minimize import (
 )
 from euro_fsqca.qca.necessity import necessity_table
 from euro_fsqca.qca.truth_table import (
+    TruthTableThresholds,
     build_truth_table,
     contradictory_rows,
     truth_table_diagnostics,
@@ -503,7 +504,8 @@ def _specification(config: AnalysisConfig, outcome: str) -> dict[str, Any]:
         "frequency_cutoff": config.truth_table.frequency_cutoff,
         "consistency_cutoff": config.truth_table.consistency_cutoff,
         "pri_cutoff": config.truth_table.pri_cutoff,
-        "frequency_basis": config.truth_table.frequency_basis,
+        "frequency_basis": "cases",
+        "canonical_engine": "CRAN QCA; the Python minimiser is the cross-check",
         "logical_remainder_policy": {
             "conservative": "observed positive rows only",
             "parsimonious": "unobserved rows treated as logical remainders",
@@ -745,6 +747,55 @@ def _write_complementarity(
     )
 
 
+def _write_weighted_truth_table_exploration(
+    calibrated: pd.DataFrame,
+    *,
+    config: AnalysisConfig,
+    conditions: list[str],
+    outcome: str,
+    output_dir: Path,
+) -> None:
+    """Compare row inclusion under case, weight-mass and effective-n rules.
+
+    This is an appendix, not an analysis. Row existence in the canonical truth
+    table counts sampled establishments, because that is what the standard
+    procedure and the CRAN ``QCA`` package implement. Weighted row existence is
+    shown here only so the consequences of the design can be inspected.
+    """
+    target = output_dir / "exploratory"
+    target.mkdir(parents=True, exist_ok=True)
+    # The question is what the *survey design* would do to row inclusion, so
+    # this uses the published weights even when the primary estimand does not.
+    population_column = _estimand_columns(config).get("firm_population")
+    weights = (
+        calibrated[population_column]
+        if population_column and population_column in calibrated.columns
+        else calibrated[ANALYSIS_WEIGHT_COLUMN]
+    )
+    base = config.truth_table
+    frames: list[pd.DataFrame] = []
+    for basis in ("cases", "weighted", "effective"):
+        table = build_truth_table(
+            calibrated,
+            conditions=conditions,
+            outcome=outcome,
+            thresholds=TruthTableThresholds(
+                frequency=base.frequency_cutoff,
+                consistency=base.consistency_cutoff,
+                pri=base.pri_cutoff,
+                frequency_basis=basis,
+            ),
+            weights=weights,
+        )
+        frames.append(
+            table[["row", "frequency", "weighted_frequency", "effective_frequency", "positive"]]
+            .assign(frequency_basis=basis)
+        )
+    comparison = pd.concat(frames, ignore_index=True)
+    comparison["canonical"] = comparison["frequency_basis"] == "cases"
+    comparison.to_csv(target / "weighted_truth_table_comparison.csv", index=False)
+
+
 def _write_robustness(
     raw_frame: pd.DataFrame,
     calibrated: pd.DataFrame,
@@ -756,6 +807,14 @@ def _write_robustness(
     alternative_schemes: dict[str, dict[str, str]],
     output_dir: Path,
 ) -> None:
+    if config.robustness.weighted_truth_table_exploration:
+        _write_weighted_truth_table_exploration(
+            calibrated,
+            config=config,
+            conditions=conditions,
+            outcome=outcome,
+            output_dir=output_dir,
+        )
     threshold_sweep(
         calibrated,
         config=config,
