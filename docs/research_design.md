@@ -89,8 +89,7 @@ The project evaluates consistency, coverage, PRI, truth-table inclusion, Boolean
 9. Directed term-level portability with two-stage bootstrap uncertainty
 10. Complementarity and substitution tests
 11. Threshold, calibration, estimand, omission, taxonomy and bootstrap robustness
-12. Net-effect comparison: survey-weighted model on the observed outcome
-13. Canonical R/QCA run and automated Python-R parity
+12. Canonical R/QCA run and automated Python-R parity
 
 ## Synthetic validation
 

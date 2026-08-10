@@ -21,7 +21,7 @@ This document records the expected empirical workflow and the honest implementat
 | Portability | Ready | Directed term-level evaluation, bootstrap intervals, two-stage discovery/transfer bootstrap, region-pair aggregates with explicit semantics. | Interpret against the real data. |
 | Complementarity | Ready | Pairwise sufficiency tests, co-occurrence reported separately, solution-level substitution. | Interpret against the real data. |
 | Robustness | Ready | Thresholds, anchors, estimands, country/sector/size/period omission, alternative taxonomy, bootstrap stability — all wired into `run_analysis`. | None. |
-| Net-effect comparison | Ready | Survey-weighted fractional logit on the observed outcome with country, period, sector and size controls and clustered errors. | None. |
+| Net-effect comparison | Removed | Not part of the study. | Re-add only if a specific question needs it, using the observed outcome and the survey design, described as an additive-association contrast. |
 | R validation | Ready | Config-driven canonical R/QCA run with structured term output and automated parity via `scripts/run_parity.py`. | Weighted metrics have no R counterpart; report them as Python-only. |
 | Tables and figures | Partial | Table and figure helpers exist. | Wire a manuscript build once there are real outputs. |
 | Manuscript | **Empty** | LaTeX scaffold mirrors the design. | Populate only from generated empirical outputs. |

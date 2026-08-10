@@ -62,7 +62,7 @@ deleted. `remove` means it should leave the repository.
 | Alternative regional taxonomy | `region_scheme_comparison` | disable now | Requires a theoretically justified primary taxonomy first. |
 | Complementarity tests | `analysis/complementarity.py` | required later, rename | The concept name overstates what the test supports. |
 | Condition co-occurrence | `condition_cooccurrence` | optional | Descriptive bookkeeping. |
-| Net-effect regression | `analysis/regression.py` | remove from the main study | Not a validation of QCA, and it creates reviewer risk for no analytical gain. |
+| Net-effect regression | removed | removed | Not a validation of QCA, and it created reviewer risk for no analytical gain. Deleted along with its tests. |
 | Synthetic demo generator | `demo.py` | required now, restricted | Keep strictly for software tests. Never on the empirical path. |
 | Known-structure scenarios | `synthetic.py` | optional | Useful for validating the minimiser; no empirical role. |
 | Figure helpers | `figures.py` | required later | Figures come after results. |
@@ -71,8 +71,8 @@ deleted. `remove` means it should leave the repository.
 | Manuscript scaffold | `paper/` | required later | Written from generated outputs, not before them. |
 | Historical review records | `docs/release_report.md`, `docs/novelty_review.md`, `reviews/` | optional | Keep as history. Do not extend before results exist. |
 
-Nothing is classified `remove` except the net-effect regression. The apparatus
-is not the problem; its ordering is.
+Only the net-effect regression was classified `remove`, and it has since been
+deleted. The apparatus is not the problem; its ordering is.
 
 ## Stage status
 

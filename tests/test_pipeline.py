@@ -59,7 +59,6 @@ def test_end_to_end_demo(tmp_path: Path) -> None:
         "bootstrap_term_stability.csv",
         "regional_taxonomy_robustness.csv",
         "leave_one_country_out.csv",
-        "net_effect_model.csv",
     ]:
         assert (output / name).exists(), name
     for name in [
