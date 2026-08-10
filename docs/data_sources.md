@@ -23,6 +23,7 @@ Record every raw source file in `data/manifest.csv` before processing. The manif
 | `survey_year` | Survey year or wave. |
 | `wbes_version` | WBES release or version when available. |
 | `file_name` | File path relative to `data/raw/`, or an absolute local path. |
+| `source_format` | Format of the source file, such as `stata`, `spss`, `csv` or `parquet`. |
 | `checksum` | SHA-256 checksum of the raw file. |
 | `file_size` | File size in bytes. |
 | `processing_status` | Current status, such as `pending`, `audited`, or `excluded`. |
@@ -43,6 +44,36 @@ means no analysis has been done. Use `euro-fsqca readiness`, which treats an
 empty manifest as a fatal blocker.
 
 Add one row per licensed source file before running empirical processing.
+
+## Ingestion
+
+Once the manifest is populated, build the standardised raw table:
+
+```bash
+make ingest
+```
+
+Ingestion reads every recorded source, resolves the structural metadata that
+each release names differently, and preserves provenance. It does not transform
+analytical variables: recoding and construct construction happen after the
+schema audit, on evidence rather than on assumption.
+
+`configs/wbes_ingestion.yml` lists candidate source-column names for each
+structural field, in priority order. The first candidate present in a file wins,
+and every match is recorded in `outputs/data/ingestion_resolution.csv`, so the
+mapping is auditable rather than implicit. Add release-specific names under
+`overrides` when a file deviates.
+
+Ingestion refuses to proceed when an establishment identifier is duplicated
+across sources, when a required structural field cannot be resolved, when a
+survey year is implausible, when sampling weights are missing or non-positive,
+when the manifest lists a file twice, or when a checksum no longer matches.
+Each of those would otherwise produce a table that looks usable and is not.
+
+To describe files you have just downloaded, `build_manifest_rows` fills in
+everything that can be established mechanically — format, checksum, size — and
+leaves country and survey year blank, because neither can be inferred reliably
+from a file name.
 
 ## Required Design Variables
 

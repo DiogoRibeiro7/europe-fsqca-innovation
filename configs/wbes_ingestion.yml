@@ -1,0 +1,69 @@
+# Structural metadata resolution for WBES ingestion.
+#
+# These are NOT analytical variables. They identify the establishment and
+# describe the sample design, and every release names them differently. Each
+# canonical field lists candidate source columns in priority order; the first
+# one present in a source file wins, and the match is recorded in the ingestion
+# report so the mapping is auditable.
+#
+# Matching is case-insensitive. Add release-specific names under `overrides`
+# keyed by the manifest `source_name` when a file deviates from the default.
+#
+# The candidates below cover the names used across published Enterprise Survey
+# releases and standardised extracts. Verify them against the actual files with
+# `euro-fsqca inspect` before the first ingestion; an unresolved required field
+# aborts ingestion rather than silently producing an unusable table.
+default:
+  establishment_id:
+    - idstd
+    - id
+    - firm_id
+    - establishment_id
+    - panelid
+  country:
+    - country
+    - country_official
+    - economy
+    - cname
+  survey_year:
+    - year
+    - survey_year
+    - yr
+    - wave
+  sector:
+    - sector
+    - industry
+    - stra_sector
+    - sector_MS
+    - isic
+  size_class:
+    - size
+    - size_class
+    - stra_size
+    - screener_size
+  n_employees:
+    - l1
+    - employees
+    - n_employees
+    - permanent_workers
+    - fulltime
+  sampling_weight:
+    - wt
+    - weight
+    - wmedian
+    - wstrict
+    - sampling_weight
+  stratum:
+    - stratum
+    - strata
+    - stratification
+    - stra_all
+  region:
+    - region
+    - nuts
+    - nuts1
+    - nuts2
+    - locality
+    - city
+
+overrides: {}

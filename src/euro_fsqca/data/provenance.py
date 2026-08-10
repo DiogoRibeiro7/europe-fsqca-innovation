@@ -15,6 +15,7 @@ MANIFEST_COLUMNS = [
     "survey_year",
     "wbes_version",
     "file_name",
+    "source_format",
     "checksum",
     "file_size",
     "processing_status",
@@ -36,6 +37,7 @@ class ManifestEntry:
     survey_year: str
     wbes_version: str
     file_name: str
+    source_format: str
     checksum: str
     file_size: int
     processing_status: str
@@ -138,6 +140,7 @@ def load_manifest(path: str | Path) -> list[ManifestEntry]:
                     survey_year=row["survey_year"].strip(),
                     wbes_version=row["wbes_version"].strip(),
                     file_name=row["file_name"].strip(),
+                    source_format=row["source_format"].strip().lower(),
                     checksum=row["checksum"].strip().lower(),
                     file_size=file_size,
                     processing_status=row["processing_status"].strip(),
