@@ -55,6 +55,10 @@ The project evaluates consistency, coverage, PRI, truth-table inclusion, Boolean
 8. Net-effect comparison using fractional logit
 9. Optional R/QCA intermediate-solution cross-check
 
+## Synthetic validation
+
+Synthetic scenarios with known sufficient configurations are available for unit tests, integration tests, and documentation examples. They must not be reported as substantive European findings.
+
 ## Interpretation rule
 
 A regional difference is substantive only when it survives reasonable threshold/calibration perturbations and is not merely a consequence of region-specific recoding.
