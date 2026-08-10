@@ -127,6 +127,10 @@ def build_truth_table(
                 "coverage": fit.coverage,
                 "pri": fit.pri,
                 "observed": frequency > 0,
+                # QCA::truthTable codes a row with fewer than n.cut cases as a
+                # logical remainder, not as a negative case. A row nobody
+                # observed enough of is not evidence that the outcome is absent.
+                "remainder": bool(evidence < thresholds.frequency),
                 "positive": positive,
             }
         )
