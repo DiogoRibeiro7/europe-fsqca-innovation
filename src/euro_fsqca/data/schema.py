@@ -188,13 +188,104 @@ def schema_audit(datasets: Sequence[SchemaDataset], *, max_values: int = 20) -> 
     return pd.DataFrame(rows, columns=SCHEMA_AUDIT_COLUMNS)
 
 
-def schema_audit_from_manifest(
+def variable_coverage_matrix(
+    datasets: Sequence[SchemaDataset],
+    *,
+    min_non_missing_share: float = 0.5,
+) -> pd.DataFrame:
+    """Rank variables by comparable coverage across countries and releases.
+
+    Condition definitions should follow from what the standardised instrument
+    actually measures everywhere, not the other way round. This matrix is the
+    input to that decision: for every variable it reports in how many country
+    releases it exists at all, in how many it is populated well enough to use,
+    and how consistent its coding is across sources.
+    """
+    columns = [
+        "column",
+        "n_sources_present",
+        "total_sources",
+        "source_share",
+        "n_countries_present",
+        "n_countries_usable",
+        "countries_present",
+        "countries_missing",
+        "min_non_missing_share",
+        "median_non_missing_share",
+        "max_non_missing_share",
+        "dtypes",
+        "consistent_dtype",
+        "comparability",
+    ]
+    if not datasets:
+        return pd.DataFrame(columns=columns)
+
+    total_sources = len(datasets)
+    all_countries = sorted({dataset.country for dataset in datasets})
+    all_columns = sorted({str(column) for dataset in datasets for column in dataset.frame.columns})
+    rows: list[dict[str, object]] = []
+    for column in all_columns:
+        present = [dataset for dataset in datasets if column in dataset.frame.columns]
+        shares = [
+            float(dataset.frame[column].notna().mean()) if len(dataset.frame) else 0.0
+            for dataset in present
+        ]
+        usable_countries = sorted(
+            {
+                dataset.country
+                for dataset, share in zip(present, shares, strict=True)
+                if share >= min_non_missing_share
+            }
+        )
+        countries_present = sorted({dataset.country for dataset in present})
+        dtypes = sorted({str(dataset.frame[column].dtype) for dataset in present})
+        rows.append(
+            {
+                "column": column,
+                "n_sources_present": len(present),
+                "total_sources": total_sources,
+                "source_share": len(present) / total_sources,
+                "n_countries_present": len(countries_present),
+                "n_countries_usable": len(usable_countries),
+                "countries_present": _json_list(countries_present),
+                "countries_missing": _json_list(
+                    [country for country in all_countries if country not in countries_present]
+                ),
+                "min_non_missing_share": min(shares) if shares else 0.0,
+                "median_non_missing_share": float(pd.Series(shares).median()) if shares else 0.0,
+                "max_non_missing_share": max(shares) if shares else 0.0,
+                "dtypes": _json_list(dtypes),
+                "consistent_dtype": len(dtypes) <= 1,
+                "comparability": _comparability(
+                    len(usable_countries),
+                    len(all_countries),
+                ),
+            }
+        )
+    return pd.DataFrame(rows, columns=columns).sort_values(
+        ["n_countries_usable", "column"], ascending=[False, True], ignore_index=True
+    )
+
+
+def _comparability(usable_countries: int, total_countries: int) -> str:
+    if total_countries == 0 or usable_countries == 0:
+        return "unusable"
+    ratio = usable_countries / total_countries
+    if ratio == 1.0:
+        return "comparable_all_countries"
+    if ratio >= 0.9:
+        return "comparable_most_countries"
+    if ratio >= 0.5:
+        return "partial_coverage"
+    return "rare"
+
+
+def load_manifest_datasets(
     manifest_path: str | Path,
     *,
     raw_root: str | Path = "data/raw",
-    max_values: int = 20,
-) -> pd.DataFrame:
-    """Load manifest sources and produce a cross-file schema audit."""
+) -> list[SchemaDataset]:
+    """Load every source file recorded in the manifest."""
     manifest_entries = load_manifest(manifest_path)
     raw_root_path = Path(raw_root)
     datasets: list[SchemaDataset] = []
@@ -205,7 +296,29 @@ def schema_audit_from_manifest(
         if not source_path.exists():
             raise FileNotFoundError(f"missing source file: {source_path}")
         datasets.append(_dataset_from_manifest_entry(entry, read_table(source_path)))
+    return datasets
+
+
+def schema_audit_from_manifest(
+    manifest_path: str | Path,
+    *,
+    raw_root: str | Path = "data/raw",
+    max_values: int = 20,
+) -> pd.DataFrame:
+    """Load manifest sources and produce a cross-file schema audit."""
+    datasets = load_manifest_datasets(manifest_path, raw_root=raw_root)
     return schema_audit(datasets, max_values=max_values)
+
+
+def variable_coverage_from_manifest(
+    manifest_path: str | Path,
+    *,
+    raw_root: str | Path = "data/raw",
+    min_non_missing_share: float = 0.5,
+) -> pd.DataFrame:
+    """Load manifest sources and rank variables by comparable coverage."""
+    datasets = load_manifest_datasets(manifest_path, raw_root=raw_root)
+    return variable_coverage_matrix(datasets, min_non_missing_share=min_non_missing_share)
 
 
 def _dataset_from_manifest_entry(entry: ManifestEntry, frame: pd.DataFrame) -> SchemaDataset:

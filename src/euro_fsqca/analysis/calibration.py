@@ -41,7 +41,7 @@ def calibration_summary(
                 "crossover": spec.anchors.crossover,
                 "inclusion": spec.anchors.inclusion,
                 "idm": spec.anchors.idm,
-                "n": int(len(raw)),
+                "n": len(raw),
                 "n_non_missing": int(raw.notna().sum()),
                 "n_below_full_non_membership": int(below_exclusion.sum()),
                 "n_near_crossover": int(near.sum()),
@@ -88,7 +88,7 @@ def calibration_group_summary(
                 {
                     group_column: group,
                     "set_name": name,
-                    "n": int(len(membership)),
+                    "n": len(membership),
                     "n_non_missing": int(membership.notna().sum()),
                     "mean": float(membership.mean(skipna=True)),
                     "median": float(membership.median(skipna=True)),

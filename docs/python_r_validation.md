@@ -1,56 +1,71 @@
 # Python-R Validation
 
-R is an independent validation layer for QCA results. Python remains the main data-processing and analysis implementation.
+## Division of authority
 
-## Exchange Files
+R/QCA is the **canonical publication engine** for truth tables and minimisation. Python is the independent numerical cross-check.
 
-Python should export:
+| Layer | Responsibility |
+| --- | --- |
+| Python | acquisition, harmonisation, measurement, calibration, weighting, diagnostics, sensitivity orchestration, visualisation |
+| R (CRAN `QCA`) | canonical truth tables, conservative/parsimonious/intermediate minimisation, published solution metrics |
+| Python | independent recomputation of the same quantities as a cross-check |
 
-- calibrated membership data;
-- truth-table specification;
-- Python truth table;
-- Python solution summaries;
-- term-level fit tables.
+There is no scientific benefit in making a bespoke SymPy minimiser the authority for a substantive paper. Boolean minimisation belongs to a mature, widely reviewed implementation; the value this repository adds is upstream and downstream of it.
 
-R reads the exported calibrated data and independently writes:
+## Shared configuration
 
-- `truth_table.csv`;
-- `solutions.csv`;
-- text captures for manual inspection.
+`r/qca_crosscheck.R` reads the **same YAML analysis configuration** the Python pipeline uses. Conditions, the outcome, `incl.cut`, `pri.cut`, `n.cut` and the directional expectations all come from that file. No threshold is hard-coded in the R script, so the two engines cannot drift apart silently.
 
-## Comparison Statuses
+```bash
+Rscript r/qca_crosscheck.R \
+  results/main/calibrated_memberships.csv \
+  configs/analysis.yml \
+  results/main/r_validation/europe \
+  INN
+```
 
-Machine-readable comparisons use:
+## Structured exchange
 
-- `PASS`: same structure and metrics within tolerance;
-- `TOLERANCE_DIFFERENCE`: same structure but metric differences exceed tolerance;
-- `STRUCTURAL_DIFFERENCE`: rows or solution structures do not align;
+R writes machine-readable output, not captured console text:
+
+- `solution_terms.csv` — one row per configuration with `consistency`, `pri`, `raw_coverage`, `unique_coverage`;
+- `solutions.csv` — solution-level expression and metrics per solution type;
+- `truth_table.csv` — the canonical truth table;
+- `necessity.csv` — superset/subset necessity relations;
+- `specification.csv` — the thresholds and directional expectations actually used;
+- `*.txt` — human-readable transcripts for manual review only.
+
+## Automated parity
+
+```bash
+python scripts/run_parity.py --results results/main --config configs/analysis.yml
+```
+
+The script runs R, normalises both engines' configuration strings to a canonical form (tilde and lowercase negation are both accepted, literals are ordered by the configured condition order), joins on `solution` and `configuration`, and writes `parity_report.csv` and `parity_summary.csv`. It exits non-zero on any difference, so parity can gate a release instead of being asserted in prose.
+
+## Comparison statuses
+
+- `PASS`: same term, metrics agree within tolerance;
+- `TOLERANCE_DIFFERENCE`: same term, metric differences exceed tolerance;
+- `STRUCTURAL_DIFFERENCE`: a term exists in one engine only;
+- `MISSING_METRIC`: a metric is not reported by both engines;
 - `FAIL`: validation could not run.
 
-## Tolerances
+Default tolerance is `1e-6` for consistency, coverage and PRI.
 
-Default numerical tolerance is `1e-6` for consistency, coverage, and PRI. If Python and R differ because of documented algorithmic conventions, record that difference instead of forcing text equality.
+## Scope of parity
 
-## Required Reports
+R/QCA has no notion of survey weights, so parity is checked against the **unweighted** estimand. Weighted set metrics are a Python extension and are validated by their own unit tests, not by R. This limitation is stated explicitly rather than hidden: a weighted solution that has no R counterpart must be reported as a Python-only result.
 
-The Europe-wide solution and each main regional solution need an R validation report before being used as substantive evidence.
+## Required reports
 
-## Environment Setup
+The Europe-wide solution and each main regional solution need a passing parity report before being used as substantive evidence.
 
-Use the R setup check before cross-validation:
-
-```bash
-make r-check-env
-```
-
-Install the R dependencies explicitly when the check reports missing packages:
+## Environment setup
 
 ```bash
-make r-setup
-```
-
-Run the cross-check after Python has exported calibrated memberships:
-
-```bash
-make r-crosscheck
+make r-check-env   # report missing packages
+make r-setup       # install them
+make r-crosscheck  # run the canonical engine
+make parity        # run R and compare with Python
 ```

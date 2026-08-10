@@ -18,6 +18,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - uses: snok/install-poetry@v1
       - run: poetry install
-      - run: poetry run ruff check src tests
-      - run: poetry run mypy src
+      - run: poetry run ruff check .
+      - run: poetry run mypy src tests
+      - run: poetry run python -m euro_fsqca.cli validate-spec --spec configs/research_spec.yml
       - run: poetry run pytest

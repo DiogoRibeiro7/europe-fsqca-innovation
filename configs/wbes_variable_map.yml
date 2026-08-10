@@ -1,6 +1,27 @@
 # Semantic mapping worksheet, intentionally not hard-coded to one WBES release.
-# Fill `source_variables` after inspecting the exact EU-27 microdata release.
-# Keep this file under version control so variable decisions are auditable.
+#
+# READ THIS BEFORE FILLING IT IN.
+#
+# The construct names below are a *hypothesis carried over from the project
+# proposal*, not a design. Filling this file in by searching the microdata for
+# variables that resemble these labels inverts the correct order of work and
+# produces constructs that cannot be defended. The required order is:
+#
+#   1. `euro-fsqca variable-audit` on the acquired EU-27 files
+#   2. identify which variables are genuinely comparable across country releases
+#   3. group those variables into conceptual domains
+#   4. specify a measurement model for each domain
+#   5. only then name the QCA conditions, revising or dropping the entries below
+#
+# `candidate_content` records what the proposal *guessed* each construct might
+# contain. Several of those guesses are already known to be weak, and the
+# `measurement_concern` field says so. Resolve each concern explicitly; do not
+# average incompatible indicators into a single score because they share a label.
+#
+# The World Bank distinguishes standardised data from complete economy datasets
+# precisely because instruments and coding vary. Record, for every source
+# variable, the exact question wording, the country releases in which it exists
+# and is populated, the recode, and the missing-value rule.
 constructs:
   DIG_raw:
     canonical_project_name: DIG_raw
@@ -12,8 +33,14 @@ constructs:
       - website or digital presence
       - technology adoption
       - ICT-enabled business practices
-    transformation: TODO after schema audit
-    missing_value_rule: TODO after schema audit
+    measurement_concern: >-
+      Having a website and adopting production technology are different
+      capabilities at very different levels of sophistication. Decide whether
+      the construct is digital presence, technological sophistication, or a
+      defensible latent capability spanning both, and show that the chosen
+      indicators are available across the EU-27.
+    transformation: TODO after variable-coverage audit
+    missing_value_rule: TODO after variable-coverage audit
     notes: Requires exact question wording and country coverage.
 
   HC_raw:
@@ -26,8 +53,12 @@ constructs:
       - skilled permanent workers
       - worker training
       - education or skill intensity
-    transformation: TODO after schema audit
-    missing_value_rule: TODO after schema audit
+    measurement_concern: >-
+      Stock and investment are being mixed. The share of skilled workers is a
+      stock of human capital; formal training is an investment flow; education
+      is a third thing again. Separate them or justify the composite.
+    transformation: TODO after variable-coverage audit
+    missing_value_rule: TODO after variable-coverage audit
     notes: Requires exact question wording and country coverage.
 
   FIN_raw:
@@ -40,8 +71,12 @@ constructs:
       - access to bank finance
       - working-capital finance
       - credit constraint indicators
-    transformation: TODO after schema audit
-    missing_value_rule: TODO after schema audit
+    measurement_concern: >-
+      Access and constraint are not the same construct, and self-reported
+      obstacle questions are known to be endogenous to firm performance. Decide
+      whether the condition is realised access or perceived constraint.
+    transformation: TODO after variable-coverage audit
+    missing_value_rule: TODO after variable-coverage audit
     notes: Requires exact question wording and country coverage.
 
   INT_raw:
@@ -54,8 +89,12 @@ constructs:
       - direct exports
       - indirect exports
       - export intensity
-    transformation: TODO after schema audit
-    missing_value_rule: TODO after schema audit
+    measurement_concern: >-
+      The most defensible of the six, but decide whether the condition is the
+      binary fact of exporting or the intensity of it, and whether indirect
+      exports count.
+    transformation: TODO after variable-coverage audit
+    missing_value_rule: TODO after variable-coverage audit
     notes: Requires exact question wording and country coverage.
 
   MGT_raw:
@@ -68,9 +107,15 @@ constructs:
       - management-practice indicators
       - performance monitoring
       - target setting
-    transformation: TODO after schema audit
-    missing_value_rule: TODO after schema audit
-    notes: Requires exact question wording and country coverage.
+    measurement_concern: >-
+      RESTRICTED POPULATION. The management module is administered only to
+      larger establishments, so requiring MGT changes the analytical population
+      rather than adding a condition to it. MGT belongs to the declared
+      management extension sample; record the exact screener rule here so the
+      sample filter in configs/analysis.yml reproduces it.
+    transformation: TODO after variable-coverage audit
+    missing_value_rule: TODO after variable-coverage audit
+    notes: Requires exact question wording, country coverage, and the screener.
 
   EXTK_raw:
     canonical_project_name: EXTK_raw
@@ -82,8 +127,14 @@ constructs:
       - foreign ownership
       - international quality certification
       - technology licensed from foreign-owned firms
-    transformation: TODO after schema audit
-    missing_value_rule: TODO after schema audit
+    measurement_concern: >-
+      These three are not interchangeable measures of one construct. Foreign
+      ownership is a governance structure, certification is a quality-assurance
+      practice, and licensing is a knowledge-acquisition channel. Averaging them
+      would create a score with no referent. Either pick the channel the theory
+      actually implicates, or split the construct.
+    transformation: TODO after variable-coverage audit
+    missing_value_rule: TODO after variable-coverage audit
     notes: Requires exact question wording and country coverage.
 
   INN_raw:
@@ -96,6 +147,12 @@ constructs:
       - product innovation
       - process innovation
       - innovation-related activity intensity
-    transformation: TODO after schema audit
-    missing_value_rule: TODO after schema audit
-    notes: Requires exact question wording and country coverage.
+    measurement_concern: >-
+      Standard Enterprise Survey innovation questions ask about the three years
+      preceding the interview, so the reference window differs between a 2019
+      and a 2021 respondent. A binary product-innovation item should not be
+      turned into a graded fuzzy outcome without justification; prefer a
+      genuinely graded construct if the harmonised content permits one.
+    transformation: TODO after variable-coverage audit
+    missing_value_rule: TODO after variable-coverage audit
+    notes: Requires exact question wording, country coverage, and reference period.

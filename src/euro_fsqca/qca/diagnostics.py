@@ -23,7 +23,7 @@ def diversity_diagnostics(
             {"metric": "observed_configurations", "value": int(observed.sum())},
             {"metric": "unobserved_configurations", "value": int((~observed).sum())},
             {"metric": "positive_configurations", "value": int(positive.sum())},
-            {"metric": "contradictory_configurations", "value": int(len(contradictions))},
+            {"metric": "contradictory_configurations", "value": len(contradictions)},
             {
                 "metric": "limited_diversity_share",
                 "value": float((~observed).sum() / total_rows) if total_rows else 0.0,

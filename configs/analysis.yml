@@ -1,30 +1,80 @@
-# WBES analysis template.
-# Do NOT run this unchanged. First run `euro-fsqca inspect` on the acquired
-# microdata, map WBES variables to the canonical analytical columns below, and
-# justify calibration anchors in docs/calibration_protocol.md.
+# WBES EU-27 analysis template. NOT AN EMPIRICAL DESIGN YET.
+#
+# `status: template` blocks `euro-fsqca run` on purpose. Every anchor below is a
+# placeholder, every construct in configs/wbes_variable_map.yml is unresolved,
+# and data/manifest.csv is empty, so any output produced from this file would be
+# fictitious. Run `euro-fsqca readiness` for the current list of blockers.
+#
+# The order of work is deliberate and must not be short-circuited:
+#   1. acquire the licensed EU-27 microdata and record it in data/manifest.csv
+#   2. `euro-fsqca variable-audit` to find what is actually comparable EU-wide
+#   3. define constructs from that evidence, then fill wbes_variable_map.yml
+#   4. justify each anchor from the observed distribution and from theory
+#   5. set the survey design block from the released weight and strata variables
+#   6. flip status to `research`
+status: template
+
 case_id: firm_id
 country_column: country
 regions_file: configs/regions.yml
 primary_region_scheme: macro3
 
+# Columns carried through calibration for design-aware estimation and for the
+# subgroup robustness checks. Names must match the harmonised analytical table.
+design_columns: [sector, size_class, n_employees]
+
+# WBES is a stratified probability sample with unequal inclusion probabilities,
+# so a pooled European claim has to state which population it refers to. All
+# three estimands are reported; the primary one carries the headline solution.
+survey:
+  weight_column: null # TODO: released sampling weight variable
+  strata_column: null # TODO: size x sector x location stratum identifier
+  psu_column: null
+  primary_estimand: unweighted
+  estimands: [unweighted]
+  # After the weight variable is mapped, use:
+  #   primary_estimand: firm_population
+  #   estimands: [unweighted, firm_population, equal_country]
+
+# EU-27 fieldwork ran from 2018 to 2022 and the innovation questions look back
+# three years, so respondents in different countries describe different periods.
+timing:
+  year_column: null # TODO: survey year variable
+  date_column: null
+  reference_period_years: 3
+  periods: {}
+  # periods:
+  #   pre_covid: [2018, 2019]
+  #   covid: [2020, 2021, 2022]
+
+# Placeholder anchors. 0 / 0.5 / 1 is not a calibration decision; it is the
+# absence of one, and `euro-fsqca readiness` reports it as a fatal blocker.
+# `direction` states the directional expectation used for intermediate
+# solutions and must be justified in the theory section before results are read.
 conditions:
   DIG:
     source: DIG_raw
+    direction: present
     anchors: {exclusion: 0, crossover: 0.5, inclusion: 1, idm: 0.95}
   HC:
     source: HC_raw
+    direction: present
     anchors: {exclusion: 0, crossover: 0.5, inclusion: 1, idm: 0.95}
   FIN:
     source: FIN_raw
+    direction: present
     anchors: {exclusion: 0, crossover: 0.5, inclusion: 1, idm: 0.95}
   INT:
     source: INT_raw
+    direction: present
     anchors: {exclusion: 0, crossover: 0.5, inclusion: 1, idm: 0.95}
   MGT:
     source: MGT_raw
+    direction: present
     anchors: {exclusion: 0, crossover: 0.5, inclusion: 1, idm: 0.95}
   EXTK:
     source: EXTK_raw
+    direction: present
     anchors: {exclusion: 0, crossover: 0.5, inclusion: 1, idm: 0.95}
 
 outcome:
@@ -32,10 +82,39 @@ outcome:
     source: INN_raw
     anchors: {exclusion: 0, crossover: 0.5, inclusion: 1, idm: 0.95}
 
+# The management module is administered to larger establishments only, so a
+# six-condition model silently redefines the analytical population. MGT
+# therefore belongs to a declared extension sample, not to the primary model.
+# The exact filters must be set from the released questionnaire and screener.
+samples:
+  primary:
+    label: primary
+    primary: true
+    description: Broad EU-27 coverage on conditions available across the frame.
+    conditions: [DIG, HC, FIN, INT, EXTK]
+    filters: []
+    # filters:
+    #   - column: n_employees
+    #     min: 5
+    #     description: establishments from five workers upwards
+  management:
+    label: management_20plus
+    description: Six-condition extension on establishments asked the management module.
+    conditions: [DIG, HC, FIN, INT, EXTK, MGT]
+    filters: []
+    # filters:
+    #   - column: n_employees
+    #     min: 20
+    #   - column: MGT_raw
+    #     require_non_missing: true
+
 truth_table:
   frequency_cutoff: 10
   consistency_cutoff: 0.80
   pri_cutoff: 0.50
+  # Use `effective` once weighting is enabled so an over-sampled stratum cannot
+  # buy row inclusion through weight mass alone.
+  frequency_basis: cases
 
 robustness:
   enabled: true
@@ -43,3 +122,9 @@ robustness:
   pri_cutoffs: [0.50, 0.55, 0.60, 0.65]
   frequency_cutoffs: [5, 10, 15, 20]
   anchor_shift_proportions: [-0.10, -0.05, 0.0, 0.05, 0.10]
+  bootstrap_replicates: 200
+  portability_bootstrap_replicates: 200
+  # Two-stage discovery bootstrap: one truth table per replicate per region pair.
+  portability_discovery_replicates: 50
+  alternative_region_scheme: eu4_robustness
+  random_seed: 42

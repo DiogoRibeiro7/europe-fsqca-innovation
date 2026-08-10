@@ -1,0 +1,8 @@
+sample,step,rule,n_establishments,weight_mass,n_countries,n_dropped,retained_share
+primary,start,harmonised analytical table,6000,17407.597450511872,27,0.0,1.0
+primary,filter,establishments with at least five workers,6000,17407.597450511872,27,0.0,1.0
+primary,complete_calibrated_sets,"observed values for DIG, HC, FIN, INT, EXTK, INN",6000,17407.597450511872,27,0.0,1.0
+management_20plus,start,harmonised analytical table,6000,17407.597450511872,27,0.0,1.0
+management_20plus,filter,establishments with at least twenty workers,2776,3665.942425743594,27,3224.0,0.46266666666666667
+management_20plus,filter,complete management-practice answers,2776,3665.942425743594,27,0.0,0.46266666666666667
+management_20plus,complete_calibrated_sets,"observed values for DIG, HC, FIN, INT, EXTK, MGT, INN",2776,3665.942425743594,27,0.0,0.46266666666666667

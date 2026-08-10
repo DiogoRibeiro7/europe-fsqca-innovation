@@ -4,17 +4,73 @@ The analysis uses fuzzy-set Qualitative Comparative Analysis. Raw constructs are
 calibrated using substantively justified full-exclusion, crossover, and
 full-inclusion anchors. The same anchors are applied across Europe in the main
 specification. The workflow includes necessity analysis, truth-table analysis,
-Boolean minimisation, analysis of the negated outcome, cross-regional portability
-of solution terms, region-specific minimisation, and robustness tests.
+Boolean minimisation, analysis of the negated outcome, directional cross-regional
+portability of solution terms, region-specific minimisation, and robustness tests.
 
-For a sufficient configuration $X$ and outcome $Y$, consistency is evaluated as
-\[
-\operatorname{Cons}(X \Rightarrow Y)=
-\frac{\sum_i \min(X_i,Y_i)}{\sum_i X_i}.
-\]
+\subsection{Survey-design-aware set relations}
 
-Coverage is
+The Enterprise Surveys are stratified probability samples in which inclusion
+probabilities differ by size, sector and location stratum. Set-theoretic
+statements therefore have to name the population they describe. For a sufficient
+configuration $X$, outcome $Y$ and case weight $w$, consistency is evaluated as
 \[
-\operatorname{Cov}(X \Rightarrow Y)=
-\frac{\sum_i \min(X_i,Y_i)}{\sum_i Y_i}.
+\operatorname{Cons}_w(X \Rightarrow Y)=
+\frac{\sum_i w_i \min(X_i,Y_i)}{\sum_i w_i X_i},
 \]
+and coverage as
+\[
+\operatorname{Cov}_w(X \Rightarrow Y)=
+\frac{\sum_i w_i \min(X_i,Y_i)}{\sum_i w_i Y_i}.
+\]
+Setting $w_i = 1$ recovers the conventional case-oriented estimators.
+
+Three estimands are reported. The unweighted estimand describes the sampled
+establishments and preserves the case-oriented logic of QCA. The
+firm-population estimand uses the published sampling weights and describes the
+establishment population in the frame. The equal-country estimand rescales the
+weights so that every member state contributes the same aggregate weight,
+preventing the largest economies from determining a pooled European solution.
+The manuscript states which estimand carries the headline solution and reports
+disagreement between them as a substantive result rather than as a nuisance.
+
+Truth-table row inclusion is design-aware for the same reason. Each row reports
+the number of sampled establishments, the weight mass $\sum_i w_i$, and Kish's
+effective sample size $(\sum_i w_i)^2 / \sum_i w_i^2$. Under weighting, row
+inclusion uses the effective sample size, so that an over-sampled stratum cannot
+buy inclusion with weight mass that carries no additional information.
+
+\subsection{Analytical population}
+
+Conditions measured on only part of the sampling frame change the population a
+solution refers to. Each analytical sample is declared explicitly with its
+inclusion rules, and the establishments and weight mass surviving each rule are
+reported. The management-practice condition is estimated on a restricted
+extension sample rather than in the primary model, and whether management
+changes the configurational structure is treated as a question rather than an
+assumption.
+
+\subsection{Solution types}
+
+Conservative solutions use no logical remainders. Parsimonious solutions treat
+unobserved rows as don't-cares while preserving observed negative rows.
+Intermediate solutions admit only easy counterfactuals given directional
+expectations declared in advance from theory. Core conditions are literals that
+survive into the parsimonious solution; peripheral conditions appear only in the
+intermediate solution. Core and peripheral claims are made only where the
+intermediate solution supports them.
+
+\subsection{Timing}
+
+Fieldwork was staggered across countries and the innovation questions refer to
+the three years preceding the interview, so respondents do not describe a common
+period and some straddle the pandemic. Survey year is carried through the
+analysis, the implied reference window is reported by country, and the survey
+period is used as an omission dimension in the robustness tests.
+
+\subsection{Software}
+
+Publication truth tables and minimisations are produced with the CRAN
+\texttt{QCA} package. The Python implementation independently recomputes the
+same quantities, and parity is checked automatically at the level of individual
+solution terms. Weighted set metrics have no counterpart in the R package and
+are reported as an extension of the standard procedure.

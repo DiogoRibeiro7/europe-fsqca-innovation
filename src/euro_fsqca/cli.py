@@ -18,9 +18,14 @@ from euro_fsqca.data.mapping import (
 )
 from euro_fsqca.data.provenance import ManifestValidationError, raise_for_manifest_errors
 from euro_fsqca.data.provenance import validate_manifest as validate_source_manifest
-from euro_fsqca.data.schema import schema_audit_from_manifest, schema_report
+from euro_fsqca.data.schema import (
+    schema_audit_from_manifest,
+    schema_report,
+    variable_coverage_from_manifest,
+)
 from euro_fsqca.demo import generate_demo
 from euro_fsqca.pipeline import run_analysis
+from euro_fsqca.readiness import assess_readiness, readiness_blockers
 from euro_fsqca.spec import load_research_spec, validate_research_spec
 
 app = typer.Typer(no_args_is_help=True, help="European firm-innovation fsQCA research pipeline.")
@@ -77,6 +82,57 @@ def audit_schema(
     frame = schema_audit_from_manifest(manifest, raw_root=root, max_values=max_values)
     write_table(frame, output)
     typer.echo(f"Schema audit written to {output}")
+
+
+@app.command("variable-audit")
+def variable_audit(
+    manifest: Annotated[Path, typer.Option(is_flag=False)] = Path("data/manifest.csv"),
+    root: Annotated[Path, typer.Option(is_flag=False)] = Path("data/raw"),
+    output: Annotated[Path, typer.Option(is_flag=False)] = Path(
+        "outputs/data/variable_coverage.csv"
+    ),
+    min_non_missing_share: Annotated[float, typer.Option(min=0.0, max=1.0, is_flag=False)] = 0.5,
+) -> None:
+    """Rank source variables by comparable coverage across country releases.
+
+    Run this before defining conditions. Constructs should follow from the
+    variables that are actually comparable EU-wide, not the other way round.
+    """
+    frame = variable_coverage_from_manifest(
+        manifest, raw_root=root, min_non_missing_share=min_non_missing_share
+    )
+    write_table(frame, output)
+    usable = int((frame["comparability"] == "comparable_all_countries").sum()) if len(frame) else 0
+    typer.echo(f"Variable coverage written to {output}")
+    typer.echo(f"Variables comparable across every country release: {usable}")
+
+
+@app.command()
+def readiness(
+    config: Annotated[Path, typer.Option(is_flag=False)] = Path("configs/analysis.yml"),
+    mapping: Annotated[Path, typer.Option(is_flag=False)] = Path(
+        "configs/wbes_variable_map.yml"
+    ),
+    manifest: Annotated[Path, typer.Option(is_flag=False)] = Path("data/manifest.csv"),
+    root: Annotated[Path, typer.Option(is_flag=False)] = Path("data/raw"),
+    output: Annotated[Path, typer.Option(is_flag=False)] = Path("outputs/readiness.csv"),
+) -> None:
+    """Report what stands between this repository and an empirical run."""
+    report = assess_readiness(
+        config_path=config,
+        mapping_path=mapping,
+        manifest_path=manifest,
+        raw_root=root,
+    )
+    write_table(report, output)
+    for _, row in report.iterrows():
+        typer.echo(f"[{row['status'].upper():7}] {row['check']}: {row['detail']}")
+    blockers = readiness_blockers(report)
+    typer.echo(f"Readiness report written to {output}")
+    if blockers:
+        typer.echo(f"{len(blockers)} fatal blockers remain before an empirical run", err=True)
+        raise typer.Exit(1)
+    typer.echo("No fatal blockers: an empirical run is possible")
 
 
 @app.command("validate-mapping")
@@ -170,10 +226,23 @@ def run(
     input: Annotated[Path, typer.Option(help="Canonical analysis table.", is_flag=False)],
     config: Annotated[Path, typer.Option(is_flag=False)] = Path("configs/analysis.yml"),
     output_dir: Annotated[Path, typer.Option(is_flag=False)] = Path("results/main"),
+    allow_template: bool = typer.Option(
+        False,
+        "--allow-template",
+        help="Run even though the configuration is marked as a template.",
+    ),
 ) -> None:
     """Run the configured fsQCA analysis."""
-    frame = read_table(input)
     analysis_config = load_config(config)
+    if analysis_config.status == "template" and not allow_template:
+        typer.echo(
+            f"{config} is marked as a template: its anchors and variable mappings are "
+            "placeholders, so any output would be fictitious. Complete the design and set "
+            "status: research, or pass --allow-template for a software smoke test.",
+            err=True,
+        )
+        raise typer.Exit(1)
+    frame = read_table(input)
     summary = run_analysis(
         frame,
         config=analysis_config,
@@ -182,6 +251,11 @@ def run(
     )
     typer.echo(f"Analysis complete: {output_dir}")
     typer.echo(f"Complete calibrated cases: {summary['n_complete_calibrated']}")
+    for sample in summary["samples"]:
+        typer.echo(
+            f"  sample {sample['sample']}: {sample['n_complete_calibrated']} establishments, "
+            f"conditions {', '.join(sample['conditions'])}"
+        )
 
 
 if __name__ == "__main__":

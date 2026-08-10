@@ -32,7 +32,7 @@ def construct_summary(values: pd.DataFrame, *, constructs: list[str]) -> pd.Data
         rows.append(
             {
                 "construct": construct,
-                "n": int(len(series)),
+                "n": len(series),
                 "n_non_missing": int(valid.shape[0]),
                 "missing_share": float(series.isna().mean()) if len(series) else 0.0,
                 "mean": float(valid.mean()) if not valid.empty else float("nan"),
@@ -77,7 +77,7 @@ def construct_group_summary(
                 {
                     group_column: group,
                     "construct": construct,
-                    "n": int(len(series)),
+                    "n": len(series),
                     "n_non_missing": int(valid.shape[0]),
                     "missing_share": float(series.isna().mean()) if len(series) else 0.0,
                     "mean": float(valid.mean()) if not valid.empty else float("nan"),

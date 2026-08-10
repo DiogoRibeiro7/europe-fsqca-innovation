@@ -37,7 +37,31 @@ poetry run euro-fsqca validate-data --manifest data/manifest.csv --root data/raw
 
 The command checks that every listed source file exists and matches the recorded SHA-256 checksum and file size. Processing should stop when a listed file is missing or mismatched.
 
-The empty template manifest validates successfully with zero checked files. Add one row per licensed source file before running empirical processing.
+The empty template manifest validates successfully with zero checked files. That
+is a property of `validate-data`, not evidence of readiness: an empty manifest
+means no analysis has been done. Use `euro-fsqca readiness`, which treats an
+empty manifest as a fatal blocker.
+
+Add one row per licensed source file before running empirical processing.
+
+## Required Design Variables
+
+The harmonised analytical table must carry more than the construct inputs. The
+following are required and must not be dropped during harmonisation, because
+population inference and subgroup robustness are impossible without them:
+
+| Variable | Why it is required |
+| --- | --- |
+| sampling weight | Inclusion probabilities differ by stratum; without it no population claim is possible. |
+| stratum identifier | Needed for stratified resampling and for weight diagnostics. |
+| survey year | Fieldwork ran 2018-2022 and the innovation reference window moves with it. |
+| sector | Sampling stratum and an omission-robustness dimension. |
+| size class and employment count | Sampling stratum, omission dimension, and the screener for the management module. |
+| region (NUTS where released) | Sub-national context and a sampling stratum. |
+
+`calibrate_frame` preserves every column listed in `survey`, `timing` and
+`design_columns` in the analysis configuration. Anything not listed there is
+dropped at calibration, so declare these columns before running the pipeline.
 
 ## Authorised Acquisition
 

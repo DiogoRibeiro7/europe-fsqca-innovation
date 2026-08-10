@@ -1,7 +1,7 @@
 {
   "title": "Configurational Pathways to Firm Innovation Across Europe",
   "upload_type": "software",
-  "description": "Reproducible research software and documentation for a firm-level fsQCA study of innovation across European macroregions. The release includes the typed Python pipeline, study specification, diagnostics, robustness checks, R validation workflow, manuscript scaffold, review records, and release report. It does not include raw or case-level World Bank Enterprise Survey microdata or empirical WBES findings.",
+  "description": "Research software for a survey-design-aware firm-level fsQCA study of innovation across European macroregions. The release includes weighted set-theoretic estimators with explicit pooled estimands, intermediate solutions with core/peripheral classification, declared analytical samples with recorded attrition, directed term-level configuration portability with bootstrap uncertainty, a wired robustness suite, and automated parity against the CRAN QCA package as the canonical engine. It contains no empirical findings: raw or case-level World Bank Enterprise Survey microdata is not included, and the variable mappings and calibration anchors remain unresolved.",
   "creators": [
     {
       "name": "Ribeiro, Diogo",
@@ -9,7 +9,7 @@
       "affiliation": "ESMAD - School of Media Arts and Design, Polytechnic of Porto"
     }
   ],
-  "version": "0.2.0",
+  "version": "0.3.0",
   "publication_date": "2026-08-10",
   "access_right": "open",
   "language": "eng",
@@ -31,7 +31,7 @@
       "resource_type": "software"
     },
     {
-      "identifier": "https://github.com/DiogoRibeiro7/europe-fsqca-innovation/releases/tag/v0.2.0",
+      "identifier": "https://github.com/DiogoRibeiro7/europe-fsqca-innovation/releases/tag/v0.3.0",
       "relation": "isVersionOf",
       "scheme": "url",
       "resource_type": "software"

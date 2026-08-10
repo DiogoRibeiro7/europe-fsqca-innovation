@@ -1,4 +1,12 @@
-# Release Report
+# Release Report (historical: v0.2.0)
+
+> This is a historical record of the `v0.2.0` release. It does not describe the
+> current repository. `v0.3.0` redesigned the analysis around the survey design
+> and removed several outputs named below (`fractional_logit.csv` became
+> `net_effect_model.csv`, `anchor_sensitivity.csv` became
+> `calibration_sensitivity.csv`, `complementarity_pairs.csv` became
+> `condition_cooccurrence.csv` alongside a real complementarity test). See
+> `CHANGELOG.md` and `docs/research_workflow.md` for the current state.
 
 Release target: `v0.2.0`  
 Report date: 2026-08-10

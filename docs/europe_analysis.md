@@ -21,21 +21,28 @@ poetry run euro-fsqca run \
   --output-dir results/main
 ```
 
+The primary sample writes to the root of the output directory; every declared
+extension sample writes to `sample_<label>/` with the same structure.
+
 ## Core Outputs
 
 The Europe-wide folder contains:
 
 - `necessity.csv`;
-- `truth_table.csv`;
+- `truth_table.csv` — with case, weighted and effective-sample-size frequency per row;
 - `truth_table_diagnostics.csv`;
 - `contradictory_rows.csv`;
-- `solutions.csv`;
-- `solution_terms.csv`.
+- `solutions.csv` — one row per solution type and estimand;
+- `solution_terms.csv` — one row per term and estimand;
+- `core_peripheral.csv` — core and peripheral roles from the intermediate solution;
+- `term_substitutability.csv`.
 
-The root output directory contains `qca_specification.json`, recording the conditions, outcome, frequency cutoff, consistency cutoff, PRI cutoff, logical-remainder policy, and common-calibration scope.
+Three solution types are reported: conservative, parsimonious and intermediate. The intermediate solution requires directional expectations and is what licenses core/peripheral claims.
 
-`solution_terms.csv` reports term fit plus the number of relevant establishments and country or regional distribution among cases with configuration membership above `0.5`.
+The root output directory contains `qca_specification.json`, recording the conditions, outcome, thresholds, frequency basis, logical-remainder policy, directional expectations, survey design, timing and declared samples. It also contains `analytical_samples.csv`, `weight_diagnostics.csv` and `survey_timing.csv`, which describe the population the solution refers to.
+
+`solution_terms.csv` reports term fit under every configured estimand, plus the number of relevant establishments and the country or regional distribution among cases with configuration membership above `0.5`.
 
 ## Guardrail
 
-Do not report the Europe-wide result as substantive while the source manifest, mapping, construct, outcome, or calibration documents still contain unresolved placeholders.
+Do not report the Europe-wide result as substantive while `euro-fsqca readiness` reports any fatal blocker. The command refuses a configuration marked `status: template`, which is the current state of `configs/analysis.yml`.

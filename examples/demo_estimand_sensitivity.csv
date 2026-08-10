@@ -1,0 +1,4 @@
+estimand,n,sum_weight,n_positive_rows,conservative_solution,parsimonious_solution,conservative_similarity,conservative_term_similarity,conservative_change
+unweighted,6000,6000.0,5,DIG*HC*FIN*EXTK + DIG*HC*INT,DIG*HC*FIN*EXTK + DIG*HC*INT,1.0,1.0,same_configuration
+firm_population,6000,6000.0,4,DIG*HC*INT,DIG*HC*INT,0.6,0.5,unrelated_configuration
+equal_country,6000,6000.0,5,DIG*HC*FIN*EXTK + DIG*HC*INT,DIG*HC*FIN*EXTK + DIG*HC*INT,1.0,1.0,same_configuration

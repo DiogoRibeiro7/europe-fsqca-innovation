@@ -1,45 +1,77 @@
 {
+  "primary_sample": "primary",
   "groups": [
     {
       "label": "europe",
       "n": 6000,
-      "conservative": "DIG*HC*MGT + DIG*EXTK*HC*INT + EXTK*FIN*HC*INT*MGT",
-      "parsimonious": "DIG*HC*MGT + DIG*EXTK*HC*INT + EXTK*FIN*HC*INT*MGT",
-      "n_positive_rows": 11
+      "weight_mass": 6000.0,
+      "frequency_cutoff": 8,
+      "consistency_cutoff": 0.8,
+      "pri_cutoff": 0.5,
+      "frequency_basis": "cases",
+      "conservative": "DIG*HC*FIN*EXTK + DIG*HC*INT",
+      "parsimonious": "DIG*HC*FIN*EXTK + DIG*HC*INT",
+      "intermediate": "DIG*HC*FIN*EXTK + DIG*HC*INT",
+      "n_positive_rows": 5
     },
     {
       "label": "region_central_east",
       "n": 1927,
-      "conservative": "DIG*HC*MGT + EXTK*HC*INT",
-      "parsimonious": "DIG*HC*MGT + EXTK*HC*INT",
-      "n_positive_rows": 14
+      "weight_mass": 1927.0,
+      "frequency_cutoff": 8,
+      "consistency_cutoff": 0.8,
+      "pri_cutoff": 0.5,
+      "frequency_basis": "cases",
+      "conservative": "DIG*HC*EXTK + DIG*HC*FIN*INT + HC*INT*EXTK",
+      "parsimonious": "DIG*HC*EXTK + DIG*HC*FIN*INT + HC*INT*EXTK",
+      "intermediate": "DIG*HC*EXTK + DIG*HC*FIN*INT + HC*INT*EXTK",
+      "n_positive_rows": 7
     },
     {
       "label": "region_north_west",
       "n": 2558,
-      "conservative": "DIG*HC*INT + DIG*HC*MGT",
-      "parsimonious": "DIG*HC*INT + DIG*HC*MGT",
-      "n_positive_rows": 12
+      "weight_mass": 2558.0,
+      "frequency_cutoff": 8,
+      "consistency_cutoff": 0.8,
+      "pri_cutoff": 0.5,
+      "frequency_basis": "cases",
+      "conservative": "DIG*HC*FIN*EXTK + DIG*HC*INT",
+      "parsimonious": "DIG*HC*FIN*EXTK + DIG*HC*INT",
+      "intermediate": "DIG*HC*FIN*EXTK + DIG*HC*INT",
+      "n_positive_rows": 5
     },
     {
       "label": "region_south",
       "n": 1515,
-      "conservative": "DIG*HC*MGT + FIN*HC*MGT",
-      "parsimonious": "DIG*HC*MGT + FIN*HC*MGT",
-      "n_positive_rows": 12
+      "weight_mass": 1515.0,
+      "frequency_cutoff": 8,
+      "consistency_cutoff": 0.8,
+      "pri_cutoff": 0.5,
+      "frequency_basis": "cases",
+      "conservative": "0",
+      "parsimonious": "0",
+      "intermediate": "0",
+      "n_positive_rows": 0
     }
   ],
   "negative_outcome": {
     "label": "europe_negative_outcome",
     "n": 6000,
-    "conservative": "~DIG*~HC + ~EXTK*~HC + ~FIN*~HC + ~HC*~INT + ~HC*~MGT + ~DIG*~EXTK*~MGT + ~DIG*~FIN*~INT + ~DIG*~INT*~MGT + ~EXTK*~INT*~MGT + ~FIN*~INT*~MGT",
-    "parsimonious": "~DIG*~HC + ~EXTK*~HC + ~FIN*~HC + ~HC*~INT + ~HC*~MGT + ~DIG*~EXTK*~MGT + ~DIG*~FIN*~INT + ~DIG*~INT*~MGT + ~EXTK*~INT*~MGT + ~FIN*~INT*~MGT",
-    "n_positive_rows": 42
+    "weight_mass": 6000.0,
+    "frequency_cutoff": 8,
+    "consistency_cutoff": 0.8,
+    "pri_cutoff": 0.5,
+    "frequency_basis": "cases",
+    "conservative": "~HC + ~DIG*~FIN*~EXTK + ~DIG*~INT",
+    "parsimonious": "~HC + ~DIG*~FIN*~EXTK + ~DIG*~INT",
+    "intermediate": "~HC + ~DIG*~FIN*~EXTK + ~DIG*~INT",
+    "n_positive_rows": 21
   },
   "n_complete_calibrated": 6000,
   "regions": {
     "north_west": 2558,
     "central_east": 1927,
     "south": 1515
-  }
+  },
+  "estimand": "unweighted"
 }
