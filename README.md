@@ -98,7 +98,7 @@ EU-27 fieldwork ran from 2018 to 2022 and standard innovation questions look bac
 
 The main analysis uses a pre-specified three-bloc analytical taxonomy: Northern/Western, Southern, and Central/Eastern Europe. The same Europe-wide calibration anchors are used in every bloc. A four-bloc alternative in `configs/regions.yml` is run by the pipeline as a robustness check.
 
-This taxonomy is a research classification, not an official geography, and it still needs a stronger theoretical justification than proximity before publication.
+This taxonomy is a research classification, not an official geography. It is currently defended by geography alone, which cannot support a claim about why a configuration should travel between blocs. `docs/regional_taxonomy_theory.md` sets out the requirements an acceptable basis must meet and recommends innovation-system maturity. Until that is implemented the paper may describe a configuration as characteristic of a group of countries, not of an innovation-system type.
 
 ## Repository structure
 
