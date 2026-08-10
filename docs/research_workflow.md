@@ -17,7 +17,7 @@ This document records the expected empirical workflow and the honest implementat
 | Analytical samples | Ready | Declared samples with filters and a recorded attrition table; MGT isolated in an extension sample. | Replace the placeholder filters with the real screener rules. |
 | Harmonisation checks | Ready | Missingness, impossible values, duplicates, categories, anomalies, exclusion log. | Run against the real table. |
 | Europe-wide QCA | Ready | Necessity, truth table, conservative/parsimonious/intermediate minimisation, core-peripheral roles, negated outcome, per-estimand metrics. | Run only after mapping and calibration are verified. |
-| Regional QCA | Ready | Independent macroregional solutions plus term-level comparison against the pooled solution. | Justify the taxonomy theoretically, not only geographically. |
+| Regional QCA | Ready | Independent macroregional solutions plus term-level comparison against the pooled solution. | **Blocked on theory**: the taxonomy is geographic. See docs/regional_taxonomy_theory.md. |
 | Portability | Ready | Directed term-level evaluation, bootstrap intervals, two-stage discovery/transfer bootstrap, region-pair aggregates with explicit semantics. | Interpret against the real data. |
 | Complementarity | Ready | Pairwise sufficiency tests, co-occurrence reported separately, solution-level substitution. | Interpret against the real data. |
 | Robustness | Ready | Thresholds, anchors, estimands, country/sector/size/period omission, alternative taxonomy, bootstrap stability — all wired into `run_analysis`. | None. |

@@ -24,31 +24,23 @@ The user-facing conceptual comparison is North, South, and East. Keeping Germany
 
 `configs/regions.yml` also defines a four-bloc alternative. In that version the Baltic states are grouped with the north, and a distinct west is retained.
 
-## Open problem: the taxonomy still needs theory
+## Open problem: this grouping is geographic, not theoretical
 
-As it stands this grouping is defended mainly by geography and by a loose appeal
-to system maturity. That is not enough to carry a claim about *why* a
-configuration should travel between blocs.
+As it stands the grouping is defended by geography. That cannot carry a claim
+about *why* a configuration should travel between blocs, which is what the
+portability contribution requires.
 
-Before publication the taxonomy has to be justified by something the argument
-actually uses. Candidate bases, to be chosen and defended explicitly:
-
-- national innovation-system maturity (for example institutional R&D intensity
-  or public research capacity);
-- financial-system structure, which bears directly on the `FIN` condition;
-- position in European production networks, which bears on `INT` and `EXTK`;
-- post-transition institutional history, which is the implicit basis of the
-  Central/Eastern bloc.
-
-Whichever basis is chosen must be stated before the solutions are read, must
-apply consistently to every member state, and must be measurable from a source
-independent of the outcome. If no such basis can be defended, the honest move is
-to report country-level heterogeneity and drop the bloc language, not to keep a
-grouping the theory cannot support.
+`docs/regional_taxonomy_theory.md` sets out the requirements an acceptable basis
+must meet, assesses four candidates, and recommends innovation-system maturity
+as the primary basis with position in European production networks as the
+pre-declared alternative. Until that is implemented, the paper may describe a
+configuration as characteristic of a geographically defined group of countries,
+and may not describe it as characteristic of an innovation-system type.
 
 `regional_taxonomy_robustness.csv` re-derives every regional solution under the
 four-bloc alternative, so a finding that depends on where the boundary was drawn
-is visible rather than hidden.
+is visible rather than hidden. That is a sensitivity check, not a substitute for
+a theoretical basis.
 
 ## Pre-registration rule
 
