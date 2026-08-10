@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from itertools import product
 
+import numpy as np
 import pandas as pd
 
 from euro_fsqca.config import AnalysisConfig
@@ -316,3 +318,98 @@ def leave_one_group_out(
             }
         )
     return pd.DataFrame(rows)
+
+
+def bootstrap_qca(
+    calibrated: pd.DataFrame,
+    *,
+    config: AnalysisConfig,
+    outcome: str,
+    n_bootstrap: int,
+    seed: int = 42,
+    n_jobs: int = 1,
+) -> pd.DataFrame:
+    """Bootstrap calibrated cases and record QCA solution stability."""
+    if n_bootstrap < 1:
+        raise ValueError("n_bootstrap must be at least 1")
+    seeds = np.random.default_rng(seed).integers(0, 2**32 - 1, size=n_bootstrap).tolist()
+    if n_jobs <= 1:
+        rows = [
+            _bootstrap_once(calibrated, config=config, outcome=outcome, seed=int(item), index=index)
+            for index, item in enumerate(seeds, start=1)
+        ]
+    else:
+        with ThreadPoolExecutor(max_workers=n_jobs) as executor:
+            rows = list(
+                executor.map(
+                    lambda args: _bootstrap_once(
+                        calibrated,
+                        config=config,
+                        outcome=outcome,
+                        seed=int(args[1]),
+                        index=int(args[0]),
+                    ),
+                    enumerate(seeds, start=1),
+                )
+            )
+    return pd.DataFrame(rows)
+
+
+def bootstrap_stability(bootstrap: pd.DataFrame) -> pd.DataFrame:
+    """Summarise configuration appearance frequencies across bootstrap samples."""
+    successes = bootstrap[bootstrap["status"] == "PASS"]
+    if successes.empty:
+        return pd.DataFrame(columns=["conservative_solution", "n", "appearance_frequency"])
+    counts = successes["conservative_solution"].value_counts().reset_index()
+    counts.columns = ["conservative_solution", "n"]
+    counts["appearance_frequency"] = counts["n"] / len(bootstrap)
+    return counts
+
+
+def _bootstrap_once(
+    calibrated: pd.DataFrame,
+    *,
+    config: AnalysisConfig,
+    outcome: str,
+    seed: int,
+    index: int,
+) -> dict[str, object]:
+    try:
+        sample = calibrated.sample(n=len(calibrated), replace=True, random_state=seed)
+        thresholds = TruthTableThresholds(
+            frequency=config.truth_table.frequency_cutoff,
+            consistency=config.truth_table.consistency_cutoff,
+            pri=config.truth_table.pri_cutoff,
+        )
+        table = build_truth_table(
+            sample,
+            conditions=list(config.conditions),
+            outcome=outcome,
+            thresholds=thresholds,
+        )
+        solution = minimize_truth_table(
+            table,
+            conditions=list(config.conditions),
+            kind="conservative",
+        )
+        return {
+            "bootstrap": index,
+            "seed": seed,
+            "status": "PASS",
+            "failure_reason": "",
+            "n": int(len(sample)),
+            "n_positive_rows": int(table["positive"].sum()),
+            "conservative_solution": solution.expression,
+            "n_conservative_terms": _term_count(solution.expression),
+        }
+    except Exception as exc:  # pragma: no cover - exercised by malformed external data
+        return {
+            "bootstrap": index,
+            "seed": seed,
+            "status": "FAIL",
+            "failure_reason": str(exc),
+            "n": 0,
+            "n_positive_rows": 0,
+            "conservative_solution": "",
+            "n_conservative_terms": 0,
+        }

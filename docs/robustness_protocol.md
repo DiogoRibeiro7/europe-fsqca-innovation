@@ -29,6 +29,12 @@ Classify structural changes as `same_configuration`, `one_added_condition`, `one
 
 The pipeline writes `leave_one_country_out.csv` when robustness is enabled. Sector and firm-size leave-one-out files are written when those grouping columns are available in the calibrated analysis table.
 
+## Bootstrap robustness
+
+Bootstrap diagnostics resample calibrated establishments with replacement, rerun truth-table minimisation, and record configuration appearance frequencies. This is a stability diagnostic, not conventional parameter uncertainty.
+
+Use fixed seeds and retain failed bootstrap samples with a failure reason. Keep bootstrap counts small in CI.
+
 ## Outcome asymmetry
 
 Always rerun the full sufficiency analysis for `~INN`; never infer low-innovation configurations by simply negating high-innovation solutions.
