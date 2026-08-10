@@ -16,6 +16,11 @@ import pandas as pd
 from euro_fsqca.config import AnalysisConfig, load_config
 from euro_fsqca.data.mapping import load_variable_mapping
 from euro_fsqca.data.provenance import load_manifest
+from euro_fsqca.expectations import (
+    ExpectationError,
+    compare_with_config,
+    load_expectations,
+)
 
 FATAL = "fatal"
 WARNING = "warning"
@@ -264,16 +269,61 @@ def _check_config(config: AnalysisConfig) -> list[ReadinessItem]:
             )
         )
 
+    items.append(_check_expectations(config))
+    return items
+
+
+def _check_expectations(config: AnalysisConfig) -> ReadinessItem:
+    """Check the directional-expectation register behind intermediate solutions."""
     undirected = sorted(
         name for name, spec in config.conditions.items() if spec.direction == "either"
     )
-    items.append(
-        ReadinessItem(
+    if config.directional_expectations_file is None:
+        return ReadinessItem(
             "directional_expectations",
-            WARNING if undirected else OK,
-            "conditions without a directional expectation: " + ", ".join(undirected)
-            if undirected
-            else "all conditions carry a directional expectation",
+            WARNING,
+            "no expectation register is declared; intermediate solutions rest on "
+            "undocumented directional claims"
+            + (f" (unconstrained: {', '.join(undirected)})" if undirected else ""),
         )
+
+    path = Path(config.directional_expectations_file)
+    if not path.exists():
+        return ReadinessItem(
+            "directional_expectations",
+            FATAL,
+            f"missing expectation register: {config.directional_expectations_file}",
+        )
+    try:
+        register = load_expectations(path)
+    except ExpectationError as exc:
+        return ReadinessItem("directional_expectations", FATAL, str(exc))
+
+    problems = compare_with_config(register, config)
+    if problems:
+        return ReadinessItem(
+            "directional_expectations",
+            FATAL,
+            "the expectation register and the analysis configuration disagree: "
+            + "; ".join(problems),
+        )
+    if not register.frozen:
+        return ReadinessItem(
+            "directional_expectations",
+            FATAL,
+            "the expectation register is not frozen"
+            + (
+                f" (still provisional: {', '.join(register.provisional_conditions)})"
+                if register.provisional_conditions
+                else ""
+            )
+            + "; an intermediate solution derived from unfrozen expectations is a "
+            "development artefact, not a result",
+        )
+    return ReadinessItem(
+        "directional_expectations",
+        OK,
+        f"{len(register.expectations)} expectations frozen"
+        + (f"; unconstrained: {', '.join(register.unconstrained_conditions)}"
+           if register.unconstrained_conditions else ""),
     )
-    return items

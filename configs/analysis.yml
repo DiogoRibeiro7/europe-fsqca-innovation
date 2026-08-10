@@ -18,6 +18,10 @@ case_id: firm_id
 country_column: country
 regions_file: configs/regions.yml
 primary_region_scheme: macro3
+# Theory register for the intermediate solution. The operative polarity lives in
+# the `direction` fields below, where the canonical R engine reads it; the
+# register carries the justification and the two are checked against each other.
+directional_expectations_file: configs/directional_expectations.yml
 
 # Columns carried through calibration for design-aware estimation and for the
 # subgroup robustness checks. Names must match the harmonised analytical table.
@@ -73,8 +77,10 @@ conditions:
     direction: present
     anchors: {exclusion: 0, crossover: 0.5, inclusion: 1, idm: 0.95}
   EXTK:
+    # No direction is asserted: the construct still bundles a governance
+    # structure, a certification practice and a knowledge channel.
     source: EXTK_raw
-    direction: present
+    direction: either
     anchors: {exclusion: 0, crossover: 0.5, inclusion: 1, idm: 0.95}
 
 outcome:

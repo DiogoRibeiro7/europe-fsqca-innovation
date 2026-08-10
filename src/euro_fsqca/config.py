@@ -230,6 +230,7 @@ class AnalysisConfig(BaseModel):
     samples: dict[str, SampleSpec] = Field(default_factory=dict)
     design_columns: list[str] = Field(default_factory=list)
     regions_file: str = "configs/regions.yml"
+    directional_expectations_file: str | None = None
     primary_region_scheme: str = "macro3"
     status: Literal["template", "research"] = "research"
 
