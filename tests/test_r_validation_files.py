@@ -39,3 +39,28 @@ def test_r_script_exports_structured_solution_terms() -> None:
     assert 'write.csv(terms, file.path(output_dir, "solution_terms.csv")' in content
     assert "raw_coverage = as.numeric" in content
     assert "unique_coverage = as.numeric" in content
+
+
+def test_renv_lockfile_pins_the_canonical_engine() -> None:
+    import json
+
+    root = Path(__file__).resolve().parents[1]
+    lock = json.loads((root / "renv.lock").read_text(encoding="utf-8"))
+
+    # The published solution must be attributable to a known engine version.
+    assert lock["R"]["Version"].startswith("4.")
+    packages = lock["Packages"]
+    assert "QCA" in packages
+    assert packages["QCA"]["Version"]
+    assert "yaml" in packages
+    # QCA depends on admisc; a lockfile without it would not restore.
+    assert "admisc" in packages
+
+
+def test_renv_activation_is_committed_and_library_is_not() -> None:
+    root = Path(__file__).resolve().parents[1]
+
+    assert (root / ".Rprofile").exists()
+    assert (root / "renv" / "activate.R").exists()
+    ignored = (root / ".gitignore").read_text(encoding="utf-8")
+    assert "renv/library/" in ignored
