@@ -68,7 +68,7 @@ r-crosscheck:
 	$(R_SCRIPT) r/qca_crosscheck.R $(R_INPUT) $(MAIN_CONFIG) $(R_OUTPUT) $(R_OUTCOME)
 
 parity:
-	$(PYTHON) scripts/run_parity.py --results $(MAIN_RESULTS) --config $(MAIN_CONFIG)
+	$(PYTHON) scripts/run_parity.py --results $(MAIN_RESULTS) --config $(MAIN_CONFIG) --output outputs/validation/python_r_parity.csv
 
 demo:
 	$(PYTHON) -m euro_fsqca.cli demo --output $(DEMO_INPUT) --n 6000 --seed 42

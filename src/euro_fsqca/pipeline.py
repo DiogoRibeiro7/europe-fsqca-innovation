@@ -134,6 +134,34 @@ def _estimand_columns(config: AnalysisConfig) -> dict[WeightScheme, str]:
     return {scheme: f"weight_{scheme}" for scheme in config.survey.estimands}
 
 
+def _write_analysis_cases(
+    frame: pd.DataFrame,
+    *,
+    config: AnalysisConfig,
+    conditions: list[str],
+    outcome: str,
+    group_dir: Path,
+) -> None:
+    """Export the exact cases and calibrated sets analysed by one group."""
+    identifiers = [
+        column
+        for column in [
+            config.case_id,
+            config.country_column,
+            "macroregion",
+            config.timing.year_column,
+            config.timing.period_column,
+            "sector",
+            "size_class",
+            config.survey.strata_column,
+            ANALYSIS_WEIGHT_COLUMN,
+        ]
+        if column and column in frame.columns
+    ]
+    columns = [*dict.fromkeys(identifiers), *conditions, outcome]
+    frame[columns].to_csv(group_dir / "analysis_cases.csv", index=False)
+
+
 def _run_group(
     frame: pd.DataFrame,
     *,
@@ -147,6 +175,13 @@ def _run_group(
     group_dir.mkdir(parents=True, exist_ok=True)
     thresholds = config.truth_table.thresholds()
     weights = frame[ANALYSIS_WEIGHT_COLUMN] if ANALYSIS_WEIGHT_COLUMN in frame.columns else None
+
+    # The exact cases this group analysed. The canonical R engine consumes this
+    # file rather than the pooled table, so a regional validation cannot
+    # silently be run against the whole European sample.
+    _write_analysis_cases(
+        frame, config=config, conditions=conditions, outcome=outcome, group_dir=group_dir
+    )
 
     necessity = necessity_table(
         frame, conditions=conditions, outcome=outcome, weights=weights

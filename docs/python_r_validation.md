@@ -35,23 +35,89 @@ R writes machine-readable output, not captured console text:
 - `specification.csv` — the thresholds and directional expectations actually used;
 - `*.txt` — human-readable transcripts for manual review only.
 
+## Group-specific case files
+
+Every analysis group exports the exact cases it analysed to
+`<group>/analysis_cases.csv`:
+
+```text
+results/main/europe/analysis_cases.csv
+results/main/region_north_west/analysis_cases.csv
+results/main/region_south/analysis_cases.csv
+results/main/region_central_east/analysis_cases.csv
+results/main/sample_management_20plus/europe/analysis_cases.csv
+```
+
+R consumes the group file, never the pooled table. Without this, a regional
+validation can be run against the whole European sample and appear to pass: the
+numbers would be internally consistent and would describe the wrong population.
+
 ## Automated parity
 
 ```bash
 python scripts/run_parity.py --results results/main --config configs/analysis.yml
 ```
 
-The script runs R, normalises both engines' configuration strings to a canonical form (tilde and lowercase negation are both accepted, literals are ordered by the configured condition order), joins on `solution` and `configuration`, and writes `parity_report.csv` and `parity_summary.csv`. It exits non-zero on any difference, so parity can gate a release instead of being asserted in prose.
+The script discovers every group that exported its cases, runs the canonical
+engine over each, and compares:
+
+- truth-table row membership, matched on the condition bit pattern;
+- truth-table row frequency;
+- row consistency and PRI;
+- row inclusion, `positive` against `OUT`;
+- solution terms, matched on canonical configuration strings;
+- term consistency, coverage and PRI.
+
+Configuration strings are normalised before matching: tilde and lowercase
+negation are both accepted and literals are ordered by the configured condition
+order, so the comparison is over Boolean structure rather than over printed
+text. The report is written to `outputs/validation/python_r_parity.csv` and the
+script exits non-zero on anything worse than `NUMERICAL_TOLERANCE`.
 
 ## Comparison statuses
 
-- `PASS`: same term, metrics agree within tolerance;
-- `TOLERANCE_DIFFERENCE`: same term, metric differences exceed tolerance;
-- `STRUCTURAL_DIFFERENCE`: a term exists in one engine only;
-- `MISSING_METRIC`: a metric is not reported by both engines;
-- `FAIL`: validation could not run.
+| Status | Meaning |
+| --- | --- |
+| `PASS` | Agreement within `1e-6`. |
+| `NUMERICAL_TOLERANCE` | Difference up to `1e-3`: floating-point or rounding, worth recording. |
+| `ALGORITHM_DIFFERENCE` | The engines disagree about the analysis, not about rounding. Must be explained before the result is used. |
+| `FAIL` | Validation could not run. |
 
-Default tolerance is `1e-6` for consistency, coverage and PRI.
+## Differences found and resolved
+
+Parity is not decoration. The first real run of the canonical engine, on
+identical calibrated data, returned 12 structural and 3 tolerance differences.
+
+**PRI was computed incorrectly in Python.** The implementation subtracted
+`min(x, 1 - y)` where the standard formula subtracts `min(x, y, 1 - y)`:
+
+```text
+PRI = (sum min(x, y) - sum min(x, y, 1 - y)) / (sum x - sum min(x, y, 1 - y))
+```
+
+The subtracted term is membership held *simultaneously* in the configuration,
+the outcome and its negation. Subtracting ordinary non-membership in the
+outcome instead counted every case outside the outcome as inconsistency, and
+drove PRI far below zero: on one truth-table row R reported `0.019` and Python
+reported `-41.4`. Because row inclusion is gated on `pri_cutoff`, this silently
+excluded rows that should have been positive, and the Python and R solutions
+differed as a result.
+
+After the fix the two engines agree exactly. Current state on the synthetic
+demonstration, across the pooled analysis, all three regions and the negated
+outcome:
+
+| | comparisons |
+| --- | --- |
+| `PASS` | 793 |
+| anything else | 0 |
+
+Largest numerical difference: `1.0e-14`.
+
+That bug had been present since the fuzzy operators were written, was covered
+by unit tests that asserted the wrong formula's own output, and was invisible
+until the canonical engine actually ran. It is the strongest available argument
+for keeping R authoritative.
 
 ## Scope of parity
 
