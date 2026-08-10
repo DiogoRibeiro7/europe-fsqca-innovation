@@ -23,6 +23,7 @@ from euro_fsqca.data.provenance import validate_manifest as validate_source_mani
 from euro_fsqca.data.schema import schema_audit_from_manifest, schema_report
 from euro_fsqca.demo import generate_demo
 from euro_fsqca.pipeline import run_analysis
+from euro_fsqca.spec import load_research_spec, validate_research_spec
 
 app = typer.Typer(no_args_is_help=True, help="European firm-innovation fsQCA research pipeline.")
 
@@ -98,6 +99,22 @@ def validate_mapping(
         if require_main_ready:
             raise typer.Exit(1)
     typer.echo(f"Mapping coverage written to {output}")
+
+
+@app.command("validate-spec")
+def validate_spec(
+    spec: Annotated[Path, typer.Option("--spec")] = Path("configs/research_spec.yml"),
+) -> None:
+    """Validate the study-level specification."""
+    loaded_spec = load_research_spec(spec)
+    report = validate_research_spec(loaded_spec)
+    for warning in report.warnings:
+        typer.echo(f"Specification warning: {warning}", err=True)
+    if report.errors:
+        for error in report.errors:
+            typer.echo(f"Specification error: {error}", err=True)
+        raise typer.Exit(1)
+    typer.echo(f"Specification validation passed: {spec}")
 
 
 @app.command("check-harmonisation")

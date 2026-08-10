@@ -1,0 +1,40 @@
+title: Configurational pathways to firm innovation across European macroregions
+unit_of_analysis: firm
+analysis_config: configs/analysis.yml
+variable_mapping: configs/wbes_variable_map.yml
+data_manifest: data/manifest.csv
+regions_file: configs/regions.yml
+primary_region_scheme: macro3
+robustness_region_scheme: eu4_robustness
+case_id: firm_id
+country_column: country
+condition_sets:
+  - DIG
+  - HC
+  - FIN
+  - INT
+  - MGT
+  - EXTK
+outcome_set: INN
+missing_data_policy: Use configured construct-level rules before calibration; QCA uses complete calibrated memberships.
+calibration_scope: Common Europe-wide anchors for all country and regional comparisons.
+truth_table_policy: Use the configured frequency, consistency, and PRI thresholds.
+random_seed: 42
+robustness_checks:
+  - anchor sensitivity
+  - threshold sensitivity
+  - country omission
+  - bootstrap stability
+  - alternative regional taxonomy
+output_root: results/main
+required_outputs:
+  - qca_specification.json
+  - europe/truth_table.csv
+  - europe/solution_terms.csv
+  - regional_comparison.csv
+  - portability_directed.csv
+  - country_portability.csv
+  - calibration_sensitivity.csv
+  - threshold_sensitivity.csv
+  - leave_one_country_out.csv
+  - bootstrap_stability.csv
