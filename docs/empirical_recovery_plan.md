@@ -121,22 +121,67 @@ Steps 3 to 9 are sequential and cannot be parallelised, because each constrains
 the next. Steps 2, 10 and the readiness gate are the only parts that can be
 built before the data arrives.
 
-## What is being done before the data arrives
+## What was done before the data arrived
 
-Only work that shortens the path above, and only work that removes or
-reorders existing capability rather than adding new capability:
+Only work that shortens the path above, and only work that removes or reorders
+existing capability rather than adding new capability. All of it is complete.
 
-- implement the ingestion layer so that step 2 is ready the day the files land;
-- make the readiness gate mandatory so that a fictitious run is impossible;
-- restore standard case frequency as the primary truth-table rule and record the
-  engine authority decision;
-- lock the R environment;
-- declare directional expectations from theory, before any truth table exists;
-- export group-specific case files so parity cannot silently compare different
-  samples;
-- remove the net-effect regression from the main study;
-- rename the complementarity module to what it actually measures;
-- state the theoretical basis the regional taxonomy still needs.
+| Work | Outcome |
+| --- | --- |
+| Ingestion layer | `scripts/build_analysis_table.py` no longer raises `NotImplementedError`. Step 2 is ready the day the files land. |
+| Mandatory readiness gate | `euro-fsqca run` refuses while any blocker remains; one named override, `--unsafe-development-run`, which declares its output non-evidence. |
+| Engine authority | Standard case frequency restored as the canonical row-inclusion rule; weighted row existence demoted to an appendix. Recorded in `docs/qca_engine_policy.md`. |
+| Locked R environment | `renv.lock` pins R 4.5.1 and QCA 3.25. CI restores it and runs the canonical engine. |
+| Directional expectations | Declared from theory in `configs/directional_expectations.yml`, checked against the analysis config, and unfrozen, which readiness treats as fatal. |
+| Parity | Rebuilt on group-specific case files. |
+| Net-effect regression | Removed. |
+| Conjunctural diagnostics | Renamed from complementarity to what it measures. |
+| Regional taxonomy | Theoretical requirements and candidate bases stated in `docs/regional_taxonomy_theory.md`. |
+
+### Two defects found by running the canonical engine
+
+Neither was visible while R was only described rather than executed.
+
+**PRI was computed incorrectly.** The implementation subtracted `min(x, 1 - y)`
+where the standard formula subtracts `min(x, y, 1 - y)`. On one truth-table row
+R reported `0.019` and Python reported `-41.4`. Because row inclusion is gated
+on `pri_cutoff`, this silently excluded rows that should have been positive.
+The bug had been present since the fuzzy operators were written and was covered
+by tests asserting the wrong formula's own output.
+
+**Low-frequency rows were treated as negatives.** `QCA::truthTable` codes a row
+observed in fewer than `n.cut` cases as a logical remainder; Python treated any
+row with at least one case as an observed negative, so the parsimonious solution
+could not simplify as far.
+
+After both fixes the engines agree: 748 `PASS`, 2 `EQUIVALENT_ALTERNATIVE`, no
+algorithm differences, largest numerical difference `1.0e-14`.
+
+This is the strongest available argument for keeping R canonical. It is also a
+sharper argument against the earlier development priority than anything in the
+original audit: the repository accumulated a large apparatus on top of a core
+arithmetic error that one real run exposed in minutes.
+
+## What remains blocked on the data
+
+Stages 3 to 10 and 12 to 15 cannot proceed. Each requires inspecting the real
+files, the real questionnaire, or a valid Europe-wide result.
+
+| Stage | Why it cannot start |
+| --- | --- |
+| Schema audit | No source files to audit |
+| Variable mapping | No schema audit to map from |
+| Condition redesign | No coverage evidence to design against |
+| Management eligibility rule | Questionnaire screener unknown |
+| Harmonised table | No verified mapping |
+| Outcome construction | Innovation items unknown |
+| Construct validation | No constructs |
+| Calibration anchors | No construct distributions |
+| Europe-wide result | Everything above |
+| Regional analysis, portability, robustness, tables, figures, manuscript, review, release | Gated on the Europe-wide result |
+
+The stop condition holds: if the canonical Europe-wide analysis cannot produce
+a valid solution once the data is in place, development stops there.
 
 ## What is explicitly not being done
 
