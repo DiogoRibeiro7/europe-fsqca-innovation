@@ -164,7 +164,7 @@ PYTHONPATH=src python -m euro_fsqca.cli run \
   --output-dir results/demo
 ```
 
-Generated outputs include the analytical-sample attrition table, weight and timing diagnostics, Europe-wide and regional truth tables, necessity diagnostics, conservative/parsimonious/intermediate solutions with core-peripheral roles, the negated-outcome analysis, directed portability with bootstrap intervals, complementarity and substitution tests, the full robustness suite, and the net-effect comparison model.
+Generated outputs include the analytical-sample attrition table, weight and timing diagnostics, Europe-wide and regional truth tables, necessity diagnostics, conservative/parsimonious/intermediate solutions with core-peripheral roles, the negated-outcome analysis, directed portability with bootstrap intervals, complementarity and substitution tests, the full robustness suite.
 
 ## Working with WBES microdata
 
@@ -237,7 +237,7 @@ make parity
 - separate pan-European and macroregional minimisations
 - directed, term-level portability with bootstrap uncertainty
 - sensitivity across thresholds, anchors, estimands, subsamples and taxonomies
-- no interpretation of a regression coefficient as an fsQCA result
+- no regression comparison in the main study, so no coefficient can be mistaken for a configurational result
 - raw microdata excluded from version control
 - R/QCA as the canonical engine, with automated parity
 

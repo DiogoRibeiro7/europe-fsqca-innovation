@@ -64,4 +64,3 @@ required_outputs:
   - leave_one_country_out.csv
   - bootstrap_stability.csv
   - regional_taxonomy_robustness.csv
-  - net_effect_model.csv

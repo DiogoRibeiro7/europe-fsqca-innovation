@@ -22,7 +22,6 @@ from euro_fsqca.analysis.portability import (
     directed_portability,
     evaluate_portability,
 )
-from euro_fsqca.analysis.regression import fit_net_effect_model
 from euro_fsqca.analysis.robustness import (
     anchor_sweep,
     bootstrap_qca,
@@ -449,13 +448,6 @@ def _run_sample(
             alternative_schemes=alternative_schemes,
             output_dir=output_dir,
         )
-    _write_net_effect_model(
-        calibrated,
-        config=config,
-        conditions=conditions,
-        outcome=outcome,
-        output_dir=output_dir,
-    )
 
     return {
         "sample": sample.label,
@@ -940,74 +932,6 @@ def _write_robustness(
         bootstrap_term_stability(bootstrap).to_csv(
             output_dir / "bootstrap_term_stability.csv", index=False
         )
-
-
-def _write_net_effect_model(
-    calibrated: pd.DataFrame,
-    *,
-    config: AnalysisConfig,
-    conditions: list[str],
-    outcome: str,
-    output_dir: Path,
-) -> None:
-    """Fit the conventional comparison model on the observed outcome."""
-    outcome_column = f"{outcome}_raw"
-    if outcome_column not in calibrated.columns:
-        return
-    working = calibrated.copy()
-    observed = pd.to_numeric(working[outcome_column], errors="coerce")
-    span = float(observed.max() - observed.min()) if observed.notna().any() else 0.0
-    rescaling = "none: the observed outcome already lies on the unit interval"
-    if observed.min() < 0.0 or observed.max() > 1.0:
-        if span <= 0:
-            return
-        # Rescale a bounded observed measure onto the unit interval without
-        # touching the calibration anchors, which serve a different purpose.
-        working[outcome_column] = (observed - observed.min()) / span
-        rescaling = (
-            f"min-max rescaled from [{observed.min():.6g}, {observed.max():.6g}] "
-            "onto the unit interval; this is a scale change for the link "
-            "function only and is not a calibration"
-        )
-    controls = [
-        column
-        for column in [
-            config.country_column,
-            config.timing.period_column,
-            config.timing.year_column,
-            "sector",
-            "size_class",
-        ]
-        if column and column in working.columns
-    ]
-    condition_columns = [f"{name}_raw" for name in conditions if f"{name}_raw" in working.columns]
-    if not condition_columns:
-        return
-    model = fit_net_effect_model(
-        working,
-        outcome_column=outcome_column,
-        condition_columns=condition_columns,
-        control_columns=controls,
-        weight_column=(
-            config.survey.weight_column
-            if config.survey.weight_column in working.columns
-            else None
-        ),
-        cluster_column=config.country_column,
-    )
-    model.coefficients.to_csv(output_dir / "net_effect_model.csv", index=False)
-    specification = {
-        **model.specification,
-        "outcome_rescaling": rescaling,
-        "caveat": (
-            "statsmodels reports that cov_type is not fully supported with "
-            "freq_weights: the point estimates are pseudo-maximum-likelihood "
-            "under the survey weights and the clustered errors are a sandwich "
-            "approximation, not a full design-based variance."
-        ),
-    }
-    with (output_dir / "net_effect_model.json").open("w", encoding="utf-8") as stream:
-        json.dump(specification, stream, indent=2)
 
 
 def _public(result: dict[str, Any]) -> dict[str, Any]:
