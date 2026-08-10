@@ -154,7 +154,7 @@ def threshold_sweep(
             frequency=frequency,
             consistency=consistency,
             pri=pri,
-            frequency_basis=config.truth_table.frequency_basis,
+            frequency_basis="cases",
         )
         table, solutions = _solve(
             calibrated,

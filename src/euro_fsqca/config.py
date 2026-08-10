@@ -68,20 +68,26 @@ class SetSpec(BaseModel):
 
 
 class TruthTableConfig(BaseModel):
-    """Thresholds used to code truth-table rows."""
+    """Thresholds used to code truth-table rows.
+
+    Row inclusion always counts sampled establishments. Weighted and
+    effective-sample-size row existence are exploratory only, because making
+    them canonical would put this study outside the standard procedure that
+    reviewers and the CRAN ``QCA`` package implement. See
+    ``docs/qca_engine_policy.md``.
+    """
 
     frequency_cutoff: int = Field(default=5, ge=1)
     consistency_cutoff: float = Field(default=0.80, gt=0.5, le=1.0)
     pri_cutoff: float = Field(default=0.50, ge=0.0, le=1.0)
-    frequency_basis: Literal["cases", "weighted", "effective"] = "cases"
 
     def thresholds(self) -> TruthTableThresholds:
-        """Return the runtime truth-table thresholds."""
+        """Return the runtime truth-table thresholds for the canonical analysis."""
         return TruthTableThresholds(
             frequency=self.frequency_cutoff,
             consistency=self.consistency_cutoff,
             pri=self.pri_cutoff,
-            frequency_basis=self.frequency_basis,
+            frequency_basis="cases",
         )
 
 
@@ -204,6 +210,9 @@ class RobustnessConfig(BaseModel):
     # separately rather than silently capped.
     portability_discovery_replicates: int = Field(default=50, ge=0)
     alternative_region_scheme: str | None = None
+    # Exploratory only: rebuilds the truth table on weight mass and on effective
+    # sample size for comparison. It never feeds a reported solution.
+    weighted_truth_table_exploration: bool = False
     random_seed: int = 42
 
 
@@ -248,9 +257,9 @@ class AnalysisConfig(BaseModel):
             next(iter(self.samples.values())).primary = True
         if sum(sample.primary for sample in self.samples.values()) > 1:
             raise ValueError("exactly one sample may be marked primary")
-        if self.truth_table.frequency_basis != "cases" and not self.survey.weighted:
+        if self.robustness.weighted_truth_table_exploration and not self.survey.weight_column:
             raise ValueError(
-                "a weighted frequency basis requires a weighted primary estimand"
+                "the weighted truth-table exploration requires survey.weight_column"
             )
         return self
 

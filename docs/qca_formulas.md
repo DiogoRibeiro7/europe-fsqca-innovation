@@ -57,7 +57,7 @@ Each row reports three measures of evidence:
 - `weighted_frequency` — the row's weight mass, `sum(w)`;
 - `effective_frequency` — Kish's effective sample size within the row, `sum(w)^2 / sum(w^2)`.
 
-`truth_table.frequency_basis` selects which one is compared against the frequency cutoff. Use `cases` for unweighted analysis. Prefer `effective` over `weighted` whenever weighting is enabled: an over-sampled stratum can inflate `sum(w)` without adding information, and the effective sample size discounts exactly that.
+Row inclusion in the canonical analysis is decided by `frequency` alone: the number of sampled establishments. Weight mass and effective sample size are reported for inspection but do not gate a reported solution, because a non-standard `n.cut` would not be comparable with the literature and could not be reproduced by the canonical R engine. The exploratory comparison across all three rules is written only when `robustness.weighted_truth_table_exploration` is enabled. See `docs/qca_engine_policy.md`.
 
 A row is positive when it meets:
 

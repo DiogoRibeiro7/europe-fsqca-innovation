@@ -112,9 +112,6 @@ truth_table:
   frequency_cutoff: 10
   consistency_cutoff: 0.80
   pri_cutoff: 0.50
-  # Use `effective` once weighting is enabled so an over-sampled stratum cannot
-  # buy row inclusion through weight mass alone.
-  frequency_basis: cases
 
 robustness:
   enabled: true
@@ -126,5 +123,7 @@ robustness:
   portability_bootstrap_replicates: 200
   # Two-stage discovery bootstrap: one truth table per replicate per region pair.
   portability_discovery_replicates: 50
+  # Appendix only. Row existence in the canonical truth table counts cases.
+  weighted_truth_table_exploration: false
   alternative_region_scheme: eu4_robustness
   random_seed: 42

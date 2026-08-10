@@ -151,3 +151,27 @@ def test_weighted_frequency_basis_can_include_rows_case_counting_excludes() -> N
 
     assert not bool(by_cases[by_cases["A"] == 1].iloc[0]["positive"])
     assert bool(by_weight[by_weight["A"] == 1].iloc[0]["positive"])
+
+
+def test_canonical_thresholds_always_count_cases() -> None:
+    from euro_fsqca.config import load_config
+
+    config = load_config("configs/analysis.demo.yml")
+
+    # Row inclusion in the canonical analysis is not a configurable design
+    # choice: a non-standard n.cut could not be reproduced by the R engine.
+    assert config.truth_table.thresholds().frequency_basis == "cases"
+
+
+def test_weighted_exploration_requires_a_weight_column() -> None:
+    from euro_fsqca.config import AnalysisConfig, load_config
+
+    config = load_config("configs/analysis.demo.yml")
+    payload = config.model_dump()
+    payload["survey"]["weight_column"] = None
+    payload["survey"]["primary_estimand"] = "unweighted"
+    payload["survey"]["estimands"] = ["unweighted"]
+    payload["robustness"]["weighted_truth_table_exploration"] = True
+
+    with pytest.raises(ValueError, match="weighted truth-table exploration"):
+        AnalysisConfig.model_validate(payload)
