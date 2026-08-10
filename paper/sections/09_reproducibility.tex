@@ -1,0 +1,12 @@
+\section{Reproducibility}
+
+The empirical analysis is controlled by \texttt{configs/research\_spec.yml},
+\texttt{configs/analysis.yml}, \texttt{configs/wbes\_variable\_map.yml}, and
+\texttt{configs/regions.yml}. Reproduce the synthetic pipeline check with
+\texttt{make repro-demo}. Reproduce the empirical pipeline only after the
+licensed WBES files are available locally, the manifest validates, and the
+analytical table has been constructed.
+
+The release record should include the Git commit, Zenodo DOI, software versions,
+source-data manifest status, R validation status, and a list of generated table
+metadata files.
