@@ -10,9 +10,9 @@ import numpy as np
 import pandas as pd
 import sympy as sp
 
-from euro_fsqca.analysis.complementarity import (
+from euro_fsqca.analysis.conjunctural import (
     condition_cooccurrence,
-    configurational_complementarity,
+    conjunctural_dependence,
     term_substitutability,
 )
 from euro_fsqca.analysis.portability import (
@@ -427,7 +427,7 @@ def _run_sample(
         directed_configurations=directed_configurations,
         output_dir=output_dir,
     )
-    _write_complementarity(
+    _write_conjunctural_diagnostics(
         calibrated,
         config=config,
         conditions=conditions,
@@ -744,7 +744,7 @@ def _write_portability(
     ).to_csv(output_dir / "country_portability.csv", index=False)
 
 
-def _write_complementarity(
+def _write_conjunctural_diagnostics(
     calibrated: pd.DataFrame,
     *,
     config: AnalysisConfig,
@@ -759,7 +759,7 @@ def _write_complementarity(
     condition_cooccurrence(configurations).to_csv(
         output_dir / "condition_cooccurrence.csv", index=False
     )
-    configurational_complementarity(
+    conjunctural_dependence(
         calibrated,
         conditions=conditions,
         outcome=outcome,
@@ -768,7 +768,7 @@ def _write_complementarity(
             if ANALYSIS_WEIGHT_COLUMN in calibrated.columns
             else None
         ),
-    ).to_csv(output_dir / "complementarity.csv", index=False)
+    ).to_csv(output_dir / "conjunctural_dependence.csv", index=False)
     term_substitutability(intermediate_terms).to_csv(
         output_dir / "substitutability.csv", index=False
     )

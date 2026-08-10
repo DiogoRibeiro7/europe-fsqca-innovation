@@ -1,11 +1,25 @@
-"""Configurational complementarity and substitution tests.
+"""Conjunctural capability diagnostics.
 
-Counting how often two conditions appear together in solution terms measures
-co-occurrence, not complementarity. Complementarity is a claim about the
-conjunction outperforming its parts; substitution is a claim about two
-conditions being interchangeable within an otherwise identical context. Both
-are tested here directly against the calibrated data and against the structure
-of the solution, and both are reported separately from co-occurrence.
+Four distinct things are easily confused, and this module keeps them apart.
+
+**Co-occurrence** is that two conditions appear in the same sufficient
+configuration. It is bookkeeping over solution terms and implies nothing.
+
+**Conjunctural dependence** is that a conjunction is sufficient while neither
+component is sufficient alone. This is a set-theoretic claim about the analysed
+sample, and it is what the pairwise test below measures.
+
+**Alternative pathways** are different configurations reaching the same
+outcome, which is equifinality rather than any relation between two conditions.
+
+**Potential configurational substitution** is that alternative conditions occur
+in otherwise identical sufficient configurations.
+
+None of these is *economic* complementarity, which is a claim about production
+technology or returns and needs evidence this design does not provide. The term
+`configurational complementarity` is reserved for the case where conjunctural
+dependence is supported by the solution structure and by theory, and even then
+it is a statement about configurations, not about a production function.
 """
 
 from __future__ import annotations
@@ -20,7 +34,7 @@ from euro_fsqca.qca.fuzzy import fuzzy_and, fuzzy_or, sufficiency_fit
 
 
 @dataclass(frozen=True)
-class ComplementarityThresholds:
+class ConjuncturalThresholds:
     """Decision rule for classifying a condition pair."""
 
     sufficiency: float = 0.80
@@ -34,7 +48,7 @@ def condition_cooccurrence(
     """Count condition-pair co-occurrence in sufficient configurations.
 
     This is descriptive bookkeeping over solution terms. It is not evidence of
-    complementarity; see :func:`configurational_complementarity`.
+    any relation between them; see :func:`conjunctural_dependence`.
     """
     rows: list[dict[str, object]] = []
     for source, terms in configurations.items():
@@ -71,24 +85,27 @@ def condition_cooccurrence(
     )
 
 
-def configurational_complementarity(
+def conjunctural_dependence(
     frame: pd.DataFrame,
     *,
     conditions: list[str],
     outcome: str,
     weights: pd.Series | np.ndarray | None = None,
-    thresholds: ComplementarityThresholds | None = None,
+    thresholds: ConjuncturalThresholds | None = None,
 ) -> pd.DataFrame:
-    """Test every condition pair for complementarity or substitution.
+    """Test every condition pair for conjunctural dependence or substitution.
 
     For each pair the sufficiency of the conjunction ``A*B`` is compared with
     the sufficiency of each condition alone, and the sufficiency of the
-    disjunction ``A+B`` is compared with both. Two conditions are complements
-    when neither alone is sufficient but their conjunction is, and substitutes
-    when either alone is sufficient so that the union adds coverage without
-    losing consistency.
+    disjunction ``A+B`` is compared with both. Two conditions are conjuncturally
+    dependent when neither alone is sufficient but their conjunction is, and
+    substitutable when either alone is sufficient so that the union adds
+    coverage without losing consistency.
+
+    These are claims about set relations in the analysed sample. Calling them
+    economic complementarity would require evidence this design cannot supply.
     """
-    rule = thresholds or ComplementarityThresholds()
+    rule = thresholds or ConjuncturalThresholds()
     weight_values = None if weights is None else np.asarray(weights, dtype=float)
     y = frame[outcome].to_numpy(dtype=float)
     rows: list[dict[str, object]] = []
@@ -185,7 +202,7 @@ def _classify(
     consistency_or: float,
     *,
     relevant: int,
-    rule: ComplementarityThresholds,
+    rule: ConjuncturalThresholds,
 ) -> str:
     if relevant < rule.min_relevant_cases or np.isnan(consistency_and):
         return "insufficient_evidence"
@@ -196,16 +213,16 @@ def _classify(
         consistency_left < rule.sufficiency and consistency_right < rule.sufficiency
     )
     if both_single_sufficient and consistency_or >= rule.sufficiency:
-        return "substitutes"
+        return "potential_substitution"
     if (
         neither_single_sufficient
         and consistency_and >= rule.sufficiency
         and consistency_and - max(consistency_left, consistency_right) >= rule.margin
     ):
-        return "complements"
+        return "conjuncturally_dependent"
     if consistency_and - max(consistency_left, consistency_right) >= rule.margin:
         return "conjunctural_gain_without_sufficiency"
-    return "independent"
+    return "no_conjunctural_relation"
 
 
 def _pair_type(left: bool, right: bool) -> str:

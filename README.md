@@ -164,7 +164,7 @@ PYTHONPATH=src python -m euro_fsqca.cli run \
   --output-dir results/demo
 ```
 
-Generated outputs include the analytical-sample attrition table, weight and timing diagnostics, Europe-wide and regional truth tables, necessity diagnostics, conservative/parsimonious/intermediate solutions with core-peripheral roles, the negated-outcome analysis, directed portability with bootstrap intervals, complementarity and substitution tests, the full robustness suite.
+Generated outputs include the analytical-sample attrition table, weight and timing diagnostics, Europe-wide and regional truth tables, necessity diagnostics, conservative/parsimonious/intermediate solutions with core-peripheral roles, the negated-outcome analysis, directed portability with bootstrap intervals, conjunctural dependence and substitution tests, the full robustness suite.
 
 ## Working with WBES microdata
 
