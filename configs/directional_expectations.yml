@@ -1,0 +1,104 @@
+# Directional expectations for the intermediate solution.
+#
+# An intermediate solution is only defensible if the expectations that generate
+# it were fixed in advance from theory. Two rules govern this file:
+#
+#   1. Do not infer an expectation from an observed truth table.
+#   2. Do not choose a direction because it produces a simpler solution.
+#
+# Where theory does not support a direction, the honest entry is
+# `unconstrained`. An unconstrained condition places no restriction on the
+# counterfactual, so its removal from a term is always admissible. Marking a
+# condition `unconstrained` costs parsimony and buys honesty; that is the
+# correct trade.
+#
+# `polarity` takes `present`, `absent` or `unconstrained`. It states which value
+# of the condition is expected to contribute to high innovation.
+#
+# The canonical intermediate solution is produced by the CRAN QCA package from
+# these expectations. The Python implementation only checks the resulting
+# Boolean structure. See docs/qca_engine_policy.md.
+
+outcome: INN
+
+expectations:
+  DIG:
+    polarity: present
+    justification: >-
+      Digital and technological capability is treated as an enabling capability
+      for innovation: it lowers the cost of search, recombination and
+      prototyping. The counterfactual that innovation occurs without it is a
+      difficult one and is not assumed.
+    basis: >-
+      Project theory section on capability-based views of firm innovation. To be
+      anchored to specific literature before the intermediate solution is
+      reported.
+    status: provisional
+
+  HC:
+    polarity: present
+    justification: >-
+      Absorptive capacity requires skilled labour. Human capital is expected to
+      contribute when present, and the absence of skilled labour is not expected
+      to produce high innovation.
+    basis: >-
+      Absorptive-capacity argument in the project theory section. To be anchored
+      to specific literature before the intermediate solution is reported.
+    status: provisional
+
+  FIN:
+    polarity: present
+    justification: >-
+      Innovation expenditure is uncertain and hard to collateralise, so
+      financing capability is expected to contribute when present.
+    basis: >-
+      Financing-constraint argument in the project theory section. To be
+      anchored to specific literature before the intermediate solution is
+      reported.
+    status: provisional
+
+  INT:
+    polarity: present
+    justification: >-
+      Exposure to international markets is expected to raise both the return to
+      innovation, through market size, and the pressure to innovate, through
+      competition.
+    basis: >-
+      Learning-by-exporting and competitive-pressure arguments in the project
+      theory section. To be anchored to specific literature before the
+      intermediate solution is reported.
+    status: provisional
+
+  EXTK:
+    polarity: unconstrained
+    justification: >-
+      No direction is asserted. The construct currently bundles foreign
+      ownership, international certification and technology licensing, which are
+      a governance structure, a quality-assurance practice and a knowledge
+      channel respectively. Until the measurement model resolves which of these
+      the condition actually captures, a directional claim would be a claim
+      about an object that has not been defined.
+    basis: >-
+      Unresolved measurement concern recorded in configs/wbes_variable_map.yml.
+    status: blocked_on_measurement
+
+  MGT:
+    polarity: present
+    justification: >-
+      Structured management practices are expected to contribute to innovation
+      through target setting and performance monitoring.
+    basis: >-
+      Management-practices literature referenced in the project theory section.
+      Applies only to the restricted management extension sample.
+    status: provisional
+
+# Every expectation above is `provisional` or `blocked_on_measurement`. None may
+# be used to generate a reported intermediate solution until it is anchored to
+# the literature and the underlying construct is verified against the real
+# questionnaire. Until then the intermediate solution is a development artefact.
+review:
+  frozen: false
+  freeze_condition: >-
+    All expectations reach status `theoretical` with a specific reference, the
+    variable mapping is verified, and the freeze is recorded before the first
+    canonical truth table is inspected.
