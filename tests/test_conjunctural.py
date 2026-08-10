@@ -3,9 +3,9 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from euro_fsqca.analysis.complementarity import (
+from euro_fsqca.analysis.conjunctural import (
     condition_cooccurrence,
-    configurational_complementarity,
+    conjunctural_dependence,
     term_substitutability,
 )
 
@@ -25,7 +25,7 @@ def test_condition_cooccurrence_counts_pairs() -> None:
     assert "positive_positive" in set(result["pair_type"])
 
 
-def test_complementarity_detects_conjunctural_gain() -> None:
+def test_detects_conjunctural_dependence() -> None:
     rng = np.random.default_rng(3)
     a = rng.uniform(0, 1, 400)
     b = rng.uniform(0, 1, 400)
@@ -33,27 +33,27 @@ def test_complementarity_detects_conjunctural_gain() -> None:
     # sufficient but their intersection is.
     frame = pd.DataFrame({"A": a, "B": b, "Y": np.minimum(a, b)})
 
-    result = configurational_complementarity(frame, conditions=["A", "B"], outcome="Y")
+    result = conjunctural_dependence(frame, conditions=["A", "B"], outcome="Y")
 
     row = result.iloc[0]
     assert row["consistency_conjunction"] > row["consistency_left"]
     assert row["consistency_conjunction"] > row["consistency_right"]
-    assert row["relation"] == "complements"
+    assert row["relation"] == "conjuncturally_dependent"
 
 
-def test_complementarity_detects_substitution() -> None:
+def test_detects_potential_substitution() -> None:
     rng = np.random.default_rng(5)
     a = rng.uniform(0, 1, 400)
     b = rng.uniform(0, 1, 400)
     # Either condition alone produces the outcome, so they are substitutes.
     frame = pd.DataFrame({"A": a, "B": b, "Y": np.maximum(a, b)})
 
-    result = configurational_complementarity(frame, conditions=["A", "B"], outcome="Y")
+    result = conjunctural_dependence(frame, conditions=["A", "B"], outcome="Y")
 
-    assert result.iloc[0]["relation"] == "substitutes"
+    assert result.iloc[0]["relation"] == "potential_substitution"
 
 
-def test_complementarity_respects_weights() -> None:
+def test_conjunctural_dependence_respects_weights() -> None:
     frame = pd.DataFrame(
         {
             "A": [0.9, 0.9, 0.9],
@@ -63,8 +63,8 @@ def test_complementarity_respects_weights() -> None:
     )
     heavy_contradiction = pd.Series([1.0, 1.0, 20.0])
 
-    unweighted = configurational_complementarity(frame, conditions=["A", "B"], outcome="Y")
-    weighted = configurational_complementarity(
+    unweighted = conjunctural_dependence(frame, conditions=["A", "B"], outcome="Y")
+    weighted = conjunctural_dependence(
         frame, conditions=["A", "B"], outcome="Y", weights=heavy_contradiction
     )
 

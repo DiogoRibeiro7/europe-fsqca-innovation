@@ -50,7 +50,7 @@ def test_end_to_end_demo(tmp_path: Path) -> None:
         "portability_bootstrap.csv",
         "country_portability.csv",
         "condition_cooccurrence.csv",
-        "complementarity.csv",
+        "conjunctural_dependence.csv",
         "substitutability.csv",
         "threshold_sensitivity.csv",
         "calibration_sensitivity.csv",

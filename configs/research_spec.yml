@@ -57,7 +57,7 @@ required_outputs:
   - portability_matrix.csv
   - portability_bootstrap.csv
   - country_portability.csv
-  - complementarity.csv
+  - conjunctural_dependence.csv
   - calibration_sensitivity.csv
   - threshold_sensitivity.csv
   - estimand_sensitivity.csv
