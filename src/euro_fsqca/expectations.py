@@ -12,6 +12,7 @@ any intermediate solution is a development artefact rather than a result.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -29,6 +30,11 @@ POLARITY_TO_DIRECTION = {
 #: Statuses that are not yet usable for a reported intermediate solution.
 PROVISIONAL_STATUSES = {"provisional", "blocked_on_measurement"}
 
+#: A directional claim at this status must name the argument it rests on.
+ANCHORED_STATUS = "theoretical"
+
+VALID_STATUSES = {ANCHORED_STATUS, "provisional", "blocked_on_measurement"}
+
 
 class ExpectationError(ValueError):
     """Raised when the directional-expectation register is malformed."""
@@ -43,6 +49,7 @@ class Expectation:
     justification: str
     basis: str
     status: str
+    references: tuple[str, ...] = ()
 
     @property
     def direction(self) -> str:
@@ -53,6 +60,11 @@ class Expectation:
     def provisional(self) -> bool:
         """Return whether this expectation may not yet support a reported result."""
         return self.status in PROVISIONAL_STATUSES
+
+    @property
+    def anchored(self) -> bool:
+        """Return whether the expectation names the argument it rests on."""
+        return self.status == ANCHORED_STATUS and bool(self.references)
 
 
 @dataclass(frozen=True)
@@ -68,6 +80,20 @@ class ExpectationRegister:
     def provisional_conditions(self) -> list[str]:
         """Return conditions whose expectation is not yet usable."""
         return sorted(name for name, item in self.expectations.items() if item.provisional)
+
+    @property
+    def unanchored_conditions(self) -> list[str]:
+        """Return directional expectations with no published anchor."""
+        return sorted(
+            name
+            for name, item in self.expectations.items()
+            if item.polarity != "unconstrained" and not item.anchored
+        )
+
+    @property
+    def cited_keys(self) -> set[str]:
+        """Return every bibliography key the register refers to."""
+        return {key for item in self.expectations.values() for key in item.references}
 
     @property
     def unconstrained_conditions(self) -> list[str]:
@@ -102,12 +128,24 @@ def load_expectations(path: str | Path) -> ExpectationRegister:
             raise ExpectationError(
                 f"{condition}: a directional expectation requires a justification"
             )
+        status = str(spec.get("status", "provisional")).strip()
+        if status not in VALID_STATUSES:
+            raise ExpectationError(
+                f"{condition}: status must be one of {sorted(VALID_STATUSES)}, not {status!r}"
+            )
+        references = tuple(str(key).strip() for key in spec.get("references", []) or [])
+        if status == ANCHORED_STATUS and not references:
+            raise ExpectationError(
+                f"{condition}: status {ANCHORED_STATUS!r} requires at least one reference; "
+                "an expectation without a named argument is an assertion"
+            )
         expectations[str(condition)] = Expectation(
             condition=str(condition),
             polarity=polarity,
             justification=justification,
             basis=str(spec.get("basis", "")).strip(),
-            status=str(spec.get("status", "provisional")).strip(),
+            status=status,
+            references=references,
         )
 
     review = payload.get("review", {}) or {}
@@ -119,6 +157,23 @@ def load_expectations(path: str | Path) -> ExpectationRegister:
         frozen=bool(review.get("frozen", False)),
         freeze_condition=str(review.get("freeze_condition", "")).strip(),
     )
+
+
+def missing_references(
+    register: ExpectationRegister,
+    bibliography_path: str | Path,
+) -> list[str]:
+    """Return cited keys that the bibliography does not define.
+
+    A dangling citation is a justification that cannot be checked, which is the
+    same problem as no justification at all.
+    """
+    path = Path(bibliography_path)
+    if not path.exists():
+        return sorted(register.cited_keys)
+    text = path.read_text(encoding="utf-8")
+    defined = set(re.findall(r"@\w+\{\s*([^,\s]+)\s*,", text))
+    return sorted(key for key in register.cited_keys if key not in defined)
 
 
 def compare_with_config(
