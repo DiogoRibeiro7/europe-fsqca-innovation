@@ -85,6 +85,13 @@ canonical thresholds are always constructed with case counting. The capability
 remains in `TruthTableThresholds` because the exploratory appendix uses it, but
 it cannot be reached from the main analysis path.
 
+## Multiple models are never silently resolved
+
+Where minimisation admits several equally minimal models, all are exported and
+each configuration is graded by how many models contain it. No model is
+selected as canonical by position. A configuration reported in the paper must
+either be invariant across models, or its model dependence must be stated.
+
 ## Summary
 
 | Question | Answer |
@@ -94,3 +101,4 @@ it cannot be reached from the main analysis path.
 | What determines truth-table row inclusion? | Number of sampled establishments |
 | Where are survey weights used? | Fit of discovered configurations, and sensitivity |
 | Can a weighted truth table produce a reported solution? | No |
+| What happens when several minimal models exist? | All are exported and graded; none is chosen by position |

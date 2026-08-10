@@ -17,6 +17,14 @@ terms for the outcome and its negation. Report the conservative, parsimonious
 and intermediate solutions, and classify literals as core or peripheral from the
 intermediate solution.
 
+\subsection{Solution ambiguity}
+
+Report the number of equally minimal solution models. For every configuration,
+state whether it is invariant across models or present in only some of them. A
+configuration that appears in one model out of several is not a result of the
+same standing as one that appears in all of them, and the difference must be
+visible in the text rather than resolved silently by the software.
+
 \subsection{Estimand comparison}
 
 Report the pan-European solution under the unweighted, firm-population and
@@ -63,7 +71,8 @@ Calibration diagnostics & \texttt{outputs/calibration/calibration\_summary.csv} 
 Necessity diagnostics & \texttt{results/main/europe/necessity.csv} \\
 Truth table diagnostics & \texttt{results/main/europe/truth\_table\_diagnostics.csv} \\
 Solution terms & \texttt{results/main/europe/solution\_terms.csv} \\
-Core and peripheral conditions & \texttt{results/main/europe/core\_peripheral.csv} \\
+Core and peripheral conditions & 	exttt{results/main/europe/core\_peripheral.csv} \
+Solution ambiguity & 	exttt{results/main/europe/solution\_ambiguity.csv} \\
 Estimand comparison & \texttt{results/main/estimand\_sensitivity.csv} \\
 Regional comparison & \texttt{results/main/regional\_comparison.csv} \\
 Regional term comparison & \texttt{results/main/regional\_term\_comparison.csv} \\

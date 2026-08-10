@@ -282,6 +282,85 @@ def annotate_equivalent_alternatives(
     return result
 
 
+def solution_ambiguity(r_terms: pd.DataFrame) -> pd.DataFrame:
+    """Classify each configuration by how many minimal models contain it.
+
+    Boolean minimisation can return several equally minimal solution models.
+    Reporting one of them as the result presents an arbitrary choice as a
+    finding, so every model is retained and each configuration is graded by how
+    much of the model space supports it.
+    """
+    columns = [
+        "solution",
+        "configuration",
+        "n_models",
+        "n_models_containing",
+        "model_share",
+        "models",
+        "status",
+    ]
+    if r_terms.empty or "model" not in r_terms.columns:
+        return pd.DataFrame(columns=columns)
+
+    rows: list[dict[str, object]] = []
+    for solution, group in r_terms.groupby("solution", observed=True):
+        models = sorted(int(model) for model in group["model"].unique())
+        n_models = len(models)
+        for configuration, term_group in group.groupby("configuration", observed=True):
+            containing = sorted(int(model) for model in term_group["model"].unique())
+            rows.append(
+                {
+                    "solution": str(solution),
+                    "configuration": str(configuration),
+                    "n_models": n_models,
+                    "n_models_containing": len(containing),
+                    "model_share": len(containing) / n_models if n_models else float("nan"),
+                    "models": ";".join(str(model) for model in containing),
+                    "status": _ambiguity_status(len(containing), n_models),
+                }
+            )
+    return pd.DataFrame(rows, columns=columns).sort_values(
+        ["solution", "n_models_containing", "configuration"],
+        ascending=[True, False, True],
+        ignore_index=True,
+    )
+
+
+def _ambiguity_status(containing: int, n_models: int) -> str:
+    if n_models <= 1:
+        return "single_model"
+    if containing == n_models:
+        return "invariant"
+    if containing == 1:
+        return "model_specific"
+    return "partial"
+
+
+def select_comparable_model(
+    python_terms: pd.DataFrame,
+    r_terms: pd.DataFrame,
+    *,
+    solution: str,
+    conditions: list[str],
+) -> int:
+    """Choose the R model to compare against for one solution type.
+
+    When several equally minimal models exist, the Python cover is compared
+    against the one it reproduces, if any. Comparing against an arbitrary model
+    would report ambiguity as disagreement. The chosen model is recorded.
+    """
+    subset = r_terms[r_terms["solution"] == solution]
+    if subset.empty or "model" not in subset.columns:
+        return 1
+    models = sorted(int(model) for model in subset["model"].unique())
+    left = sorted(python_terms.loc[python_terms["solution"] == solution, "configuration"])
+    for model in models:
+        right = sorted(subset.loc[subset["model"] == model, "configuration"])
+        if solutions_equivalent(left, right, conditions):
+            return model
+    return models[0]
+
+
 def classify_difference(difference: float) -> ParityStatus:
     """Grade a numerical difference between the two engines."""
     if difference <= NUMERICAL_TOLERANCE:
