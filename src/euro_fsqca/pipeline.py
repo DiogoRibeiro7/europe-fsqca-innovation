@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 import sympy as sp
 
+from euro_fsqca.analysis.complementarity import condition_pair_matrix
 from euro_fsqca.analysis.portability import (
     country_portability,
     directed_portability,
@@ -311,6 +312,7 @@ def run_analysis(
         )
     )
     portability.to_csv(target / "portability.csv", index=False)
+    complementarity_configurations: dict[str, list[dict[str, bool]]] = {"europe": terms}
     directed_table, directed_matrix, directed_network = directed_portability(
         calibrated,
         configurations=directed_configurations,
@@ -321,6 +323,11 @@ def run_analysis(
     directed_matrix.to_csv(target / "portability_matrix.csv", index=False)
     directed_network.to_csv(target / "portability_network.csv", index=False)
     country_configurations.update(directed_configurations)
+    complementarity_configurations.update(directed_configurations)
+    condition_pair_matrix(complementarity_configurations).to_csv(
+        target / "complementarity_pairs.csv",
+        index=False,
+    )
     country_portability(
         calibrated,
         configurations=country_configurations,
