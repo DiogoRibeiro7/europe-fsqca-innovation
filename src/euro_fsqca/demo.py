@@ -1,4 +1,11 @@
-"""Synthetic data generator for a fully runnable repository demonstration."""
+"""Synthetic data generator for a fully runnable repository demonstration.
+
+The generator imitates the *structure* of a stratified establishment survey —
+unequal sampling weights, size and sector strata, staggered fieldwork years —
+so that the design-aware code paths are exercised. It imitates nothing about
+the substantive content of the World Bank Enterprise Surveys and must never be
+read as evidence about European firms.
+"""
 
 from __future__ import annotations
 
@@ -34,14 +41,41 @@ COUNTRIES = {
     ],
 }
 
+SECTORS = ["manufacturing", "retail", "other_services"]
+SIZE_CLASSES = ["small", "medium", "large"]
+SURVEY_YEARS = [2018, 2019, 2020, 2021, 2022]
+
 
 def generate_demo(n: int = 6000, seed: int = 42) -> pd.DataFrame:
-    """Generate synthetic firms with region-dependent innovation recipes."""
+    """Generate synthetic establishments with region-dependent innovation recipes."""
     if n < 100:
         raise ValueError("demo sample should contain at least 100 cases")
     rng = np.random.default_rng(seed)
     region = rng.choice(list(COUNTRIES), size=n, p=[0.42, 0.25, 0.33])
     country = np.array([rng.choice(COUNTRIES[str(item)]) for item in region], dtype=object)
+    sector = rng.choice(SECTORS, size=n, p=[0.40, 0.25, 0.35])
+    size_class = rng.choice(SIZE_CLASSES, size=n, p=[0.55, 0.30, 0.15])
+
+    # Fieldwork is staggered by country, as it was across EU-27 between 2018
+    # and 2022, so the innovation reference window differs between respondents.
+    country_year = {
+        name: int(rng.choice(SURVEY_YEARS))
+        for name in sorted({str(value) for value in country})
+    }
+    survey_year = np.array([country_year[str(value)] for value in country], dtype=int)
+
+    # Larger strata are deliberately over-sampled, so their weights are smaller.
+    base_weight = np.select(
+        [size_class == "small", size_class == "medium"],
+        [4.0, 1.6],
+        default=0.5,
+    )
+    sampling_weight = base_weight * rng.lognormal(0.0, 0.35, n)
+    n_employees = np.select(
+        [size_class == "small", size_class == "medium"],
+        [rng.integers(5, 20, n), rng.integers(20, 100, n)],
+        default=rng.integers(100, 900, n),
+    ).astype(int)
 
     # Correlated latent firm capabilities.
     common = rng.normal(0.0, 1.0, n)
@@ -67,10 +101,18 @@ def generate_demo(n: int = 6000, seed: int = 42) -> pd.DataFrame:
     def clip(values: np.ndarray) -> np.ndarray:
         return np.clip(values, 0, 100)
 
-    return pd.DataFrame(
+    frame = pd.DataFrame(
         {
             "firm_id": [f"F{i:06d}" for i in range(1, n + 1)],
             "country": country,
+            "sector": sector,
+            "size_class": size_class,
+            "n_employees": n_employees,
+            "survey_year": survey_year,
+            "sampling_weight": sampling_weight,
+            "stratum": [
+                f"{c}|{s}|{z}" for c, s, z in zip(country, sector, size_class, strict=True)
+            ],
             "digital_raw": clip(digital),
             "human_raw": clip(human),
             "finance_raw": clip(finance),
@@ -80,3 +122,7 @@ def generate_demo(n: int = 6000, seed: int = 42) -> pd.DataFrame:
             "innovation_raw": clip(innovation),
         }
     )
+    # Management practices are only asked of larger establishments, which is the
+    # structural feature that makes MGT a restricted-sample condition.
+    frame.loc[frame["n_employees"] < 20, "management_raw"] = np.nan
+    return frame

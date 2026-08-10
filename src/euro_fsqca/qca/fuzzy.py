@@ -40,55 +40,73 @@ def fuzzy_or(*values: pd.Series | np.ndarray) -> np.ndarray:
     return cast(np.ndarray, np.maximum.reduce(arrays))
 
 
-def sufficiency_fit(x: pd.Series | np.ndarray, y: pd.Series | np.ndarray) -> Fit:
-    """Compute fuzzy sufficiency consistency, coverage, and PRI.
-
-    Cases missing either set are excluded pairwise.
-    """
+def _aligned(
+    x: pd.Series | np.ndarray,
+    y: pd.Series | np.ndarray,
+    weights: pd.Series | np.ndarray | None,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Return pairwise-complete memberships and matching case weights."""
     x_arr = np.asarray(x, dtype=float)
     y_arr = np.asarray(y, dtype=float)
-    valid = ~(np.isnan(x_arr) | np.isnan(y_arr))
-    x_valid = x_arr[valid]
-    y_valid = y_arr[valid]
-    if len(x_valid) == 0 or np.isclose(x_valid.sum(), 0.0):
+    if x_arr.shape != y_arr.shape:
+        raise ValueError("set memberships must have the same length")
+    if weights is None:
+        w_arr = np.ones_like(x_arr, dtype=float)
+    else:
+        w_arr = np.asarray(weights, dtype=float)
+        if w_arr.shape != x_arr.shape:
+            raise ValueError("weights must have the same length as set memberships")
+    valid = ~(np.isnan(x_arr) | np.isnan(y_arr) | np.isnan(w_arr))
+    return x_arr[valid], y_arr[valid], w_arr[valid]
+
+
+def sufficiency_fit(
+    x: pd.Series | np.ndarray,
+    y: pd.Series | np.ndarray,
+    *,
+    weights: pd.Series | np.ndarray | None = None,
+) -> Fit:
+    """Compute fuzzy sufficiency consistency, coverage, and PRI.
+
+    Cases missing either set are excluded pairwise. With survey weights the
+    estimator becomes ``sum_i w_i min(X_i, Y_i) / sum_i w_i X_i`` and the
+    statements refer to the weighted population rather than to the sample.
+    """
+    x_valid, y_valid, w_valid = _aligned(x, y, weights)
+    denominator = float((w_valid * x_valid).sum())
+    if len(x_valid) == 0 or np.isclose(denominator, 0.0):
         return Fit(float("nan"), float("nan"), float("nan"))
 
-    intersection = np.minimum(x_valid, y_valid)
-    contradiction = np.minimum(x_valid, 1.0 - y_valid)
-    consistency = float(intersection.sum() / x_valid.sum())
-    coverage = (
-        float(intersection.sum() / y_valid.sum())
-        if not np.isclose(y_valid.sum(), 0.0)
-        else float("nan")
-    )
-    denominator = x_valid.sum() - contradiction.sum()
+    intersection = float((w_valid * np.minimum(x_valid, y_valid)).sum())
+    contradiction = float((w_valid * np.minimum(x_valid, 1.0 - y_valid)).sum())
+    outcome_total = float((w_valid * y_valid).sum())
+    consistency = intersection / denominator
+    coverage = intersection / outcome_total if not np.isclose(outcome_total, 0.0) else float("nan")
+    pri_denominator = denominator - contradiction
     pri = (
-        float((intersection.sum() - contradiction.sum()) / denominator)
-        if denominator > 0
-        else float("nan")
+        (intersection - contradiction) / pri_denominator if pri_denominator > 0 else float("nan")
     )
     return Fit(consistency=consistency, coverage=coverage, pri=pri)
 
 
-def necessity_fit(x: pd.Series | np.ndarray, y: pd.Series | np.ndarray) -> Fit:
+def necessity_fit(
+    x: pd.Series | np.ndarray,
+    y: pd.Series | np.ndarray,
+    *,
+    weights: pd.Series | np.ndarray | None = None,
+) -> Fit:
     """Compute fuzzy necessity consistency and coverage."""
-    x_arr = np.asarray(x, dtype=float)
-    y_arr = np.asarray(y, dtype=float)
-    valid = ~(np.isnan(x_arr) | np.isnan(y_arr))
-    x_valid = x_arr[valid]
-    y_valid = y_arr[valid]
+    x_valid, y_valid, w_valid = _aligned(x, y, weights)
     if len(x_valid) == 0:
         return Fit(float("nan"), float("nan"))
-    intersection = np.minimum(x_valid, y_valid)
+    intersection = float((w_valid * np.minimum(x_valid, y_valid)).sum())
+    condition_total = float((w_valid * x_valid).sum())
+    outcome_total = float((w_valid * y_valid).sum())
     consistency = (
-        float(intersection.sum() / y_valid.sum())
-        if not np.isclose(y_valid.sum(), 0.0)
-        else float("nan")
+        intersection / outcome_total if not np.isclose(outcome_total, 0.0) else float("nan")
     )
     coverage = (
-        float(intersection.sum() / x_valid.sum())
-        if not np.isclose(x_valid.sum(), 0.0)
-        else float("nan")
+        intersection / condition_total if not np.isclose(condition_total, 0.0) else float("nan")
     )
     return Fit(consistency=consistency, coverage=coverage)
 

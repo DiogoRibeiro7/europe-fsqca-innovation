@@ -22,6 +22,9 @@ data/processed/*
 results/*
 !results/.gitkeep
 
+# Generated diagnostics from the CLI (schema, mapping, readiness, harmonisation).
+outputs/
+
 # LaTeX build outputs
 paper/*.aux
 paper/*.bbl
@@ -31,3 +34,4 @@ paper/*.fls
 paper/*.log
 paper/*.out
 paper/*.pdf
+paper/*.synctex.gz

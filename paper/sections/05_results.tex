@@ -1,22 +1,47 @@
 \section{Results}
 
+\subsection{Analytical sample}
+
+Report the establishments and weight mass surviving each inclusion rule for the
+primary sample and for the management extension, and state explicitly which
+population each subsequent result describes. Report the weight concentration and
+effective sample size, and the fieldwork year and implied innovation reference
+window by country.
+
 \subsection{Pan-European analysis}
 
 Populate this subsection only from generated outputs under
 \texttt{results/main/europe/}. The required artifacts are the necessity table,
 truth table, contradictory-row diagnostics, diversity diagnostics, and solution
-terms for the outcome and its negation.
+terms for the outcome and its negation. Report the conservative, parsimonious
+and intermediate solutions, and classify literals as core or peripheral from the
+intermediate solution.
+
+\subsection{Estimand comparison}
+
+Report the pan-European solution under the unweighted, firm-population and
+equal-country estimands. Where they disagree, report the disagreement rather
+than selecting the most convenient one.
 
 \subsection{Regional configurations}
 
 Compare Northern/Western, Southern, and Central/Eastern solutions using the same
 Europe-wide calibration anchors. Do not alter regional membership after viewing
-solution patterns.
+solution patterns. Compare regional and pooled solutions term by term, reporting
+shared, region-specific and absent configurations rather than solution strings.
 
-\subsection{Portability of European configurations}
+\subsection{Directional portability}
 
-Report regional consistency, coverage, PRI, and heterogeneity diagnostics for
-each unchanged pan-European sufficient term.
+For each source-region term, report availability, consistency, coverage and
+bootstrap uncertainty in every target region, in both directions. Report the
+share of source terms that transfer with the term count it rests on, and report
+how often each term survives resampling of its own source region.
+
+\subsection{Complementarity and substitution}
+
+Report the pairwise sufficiency tests and the substitutions visible in the
+solution structure. Report condition co-occurrence separately and describe it as
+co-occurrence.
 
 \subsection{Causal asymmetry}
 
@@ -30,12 +55,21 @@ that one is the logical inverse of the other.
 Manuscript table & Source artifact \\
 \midrule
 \endhead
+Analytical sample and attrition & \texttt{results/main/analytical\_samples.csv} \\
+Weight and design diagnostics & \texttt{results/main/weight\_diagnostics.csv} \\
+Fieldwork timing & \texttt{results/main/survey\_timing.csv} \\
 Sample and construct coverage & \texttt{outputs/data/harmonisation\_report.csv} \\
 Calibration diagnostics & \texttt{outputs/calibration/calibration\_summary.csv} \\
 Necessity diagnostics & \texttt{results/main/europe/necessity.csv} \\
 Truth table diagnostics & \texttt{results/main/europe/truth\_table\_diagnostics.csv} \\
 Solution terms & \texttt{results/main/europe/solution\_terms.csv} \\
+Core and peripheral conditions & \texttt{results/main/europe/core\_peripheral.csv} \\
+Estimand comparison & \texttt{results/main/estimand\_sensitivity.csv} \\
 Regional comparison & \texttt{results/main/regional\_comparison.csv} \\
+Regional term comparison & \texttt{results/main/regional\_term\_comparison.csv} \\
 Portability & \texttt{results/main/portability\_directed.csv} \\
+Portability uncertainty & \texttt{results/main/portability\_bootstrap.csv} \\
+Complementarity & \texttt{results/main/complementarity.csv} \\
+Net-effect comparison & \texttt{results/main/net\_effect\_model.csv} \\
 \bottomrule
 \end{longtable}

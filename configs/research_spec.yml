@@ -1,5 +1,5 @@
 title: Configurational pathways to firm innovation across European macroregions
-unit_of_analysis: firm
+unit_of_analysis: establishment
 analysis_config: configs/analysis.yml
 variable_mapping: configs/wbes_variable_map.yml
 data_manifest: data/manifest.csv
@@ -8,33 +8,60 @@ primary_region_scheme: macro3
 robustness_region_scheme: eu4_robustness
 case_id: firm_id
 country_column: country
+# The primary model excludes MGT because the management module is administered
+# to a restricted population; MGT is estimated as a declared extension sample.
 condition_sets:
   - DIG
   - HC
   - FIN
   - INT
-  - MGT
   - EXTK
 outcome_set: INN
-missing_data_policy: Use configured construct-level rules before calibration; QCA uses complete calibrated memberships.
+primary_sample: primary
+extension_samples:
+  - management_20plus
+primary_estimand: unweighted
+estimands:
+  - unweighted
+missing_data_policy: Use configured construct-level rules before calibration; QCA uses complete calibrated memberships and records attrition per sample.
 calibration_scope: Common Europe-wide anchors for all country and regional comparisons.
-truth_table_policy: Use the configured frequency, consistency, and PRI thresholds.
+truth_table_policy: Use the configured frequency, consistency, and PRI thresholds; use the effective-sample-size frequency basis whenever weighting is enabled.
+survey_design_policy: Report unweighted, firm-population-weighted and equal-country-weighted estimands, and state which one carries the headline solution.
+timing_policy: Carry survey year through calibration, report the innovation reference window by country, and treat the survey period as an omission dimension.
+canonical_qca_engine: r/qca_crosscheck.R using the CRAN QCA package
+python_role: acquisition, harmonisation, calibration, diagnostics, weighting, sensitivity orchestration and independent numerical cross-check
 random_seed: 42
 robustness_checks:
   - anchor sensitivity
   - threshold sensitivity
+  - estimand sensitivity
   - country omission
+  - sector omission
+  - size-class omission
+  - survey-period omission
   - bootstrap stability
   - alternative regional taxonomy
+  - directed portability bootstrap
 output_root: results/main
 required_outputs:
   - qca_specification.json
+  - analytical_samples.csv
+  - weight_diagnostics.csv
+  - survey_timing.csv
   - europe/truth_table.csv
   - europe/solution_terms.csv
+  - europe/core_peripheral.csv
   - regional_comparison.csv
+  - regional_term_comparison.csv
   - portability_directed.csv
+  - portability_matrix.csv
+  - portability_bootstrap.csv
   - country_portability.csv
+  - complementarity.csv
   - calibration_sensitivity.csv
   - threshold_sensitivity.csv
+  - estimand_sensitivity.csv
   - leave_one_country_out.csv
   - bootstrap_stability.csv
+  - regional_taxonomy_robustness.csv
+  - net_effect_model.csv

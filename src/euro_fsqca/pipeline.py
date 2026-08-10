@@ -10,79 +10,97 @@ import numpy as np
 import pandas as pd
 import sympy as sp
 
-from euro_fsqca.analysis.complementarity import condition_pair_matrix
+from euro_fsqca.analysis.complementarity import (
+    condition_cooccurrence,
+    configurational_complementarity,
+    term_substitutability,
+)
 from euro_fsqca.analysis.portability import (
+    PortabilityThresholds,
+    bootstrap_directed_portability,
     country_portability,
     directed_portability,
     evaluate_portability,
 )
-from euro_fsqca.analysis.regression import fit_fractional_logit
-from euro_fsqca.analysis.robustness import anchor_sweep, leave_one_group_out, threshold_sweep
-from euro_fsqca.config import AnalysisConfig, SetSpec
+from euro_fsqca.analysis.regression import fit_net_effect_model
+from euro_fsqca.analysis.robustness import (
+    anchor_sweep,
+    bootstrap_qca,
+    bootstrap_stability,
+    bootstrap_term_stability,
+    classify_solution_change,
+    estimand_sweep,
+    leave_one_group_out,
+    region_scheme_comparison,
+    signed_literal_jaccard,
+    threshold_sweep,
+)
+from euro_fsqca.analysis.samples import assign_period, select_sample, timing_summary
+from euro_fsqca.config import AnalysisConfig, SampleSpec, SetSpec
 from euro_fsqca.data.regions import attach_regions, load_region_map
 from euro_fsqca.qca.diagnostics import difficult_rows, diversity_diagnostics
 from euro_fsqca.qca.fuzzy import fuzzy_and, fuzzy_not, fuzzy_or, sufficiency_fit
-from euro_fsqca.qca.minimize import BooleanSolution, minimize_truth_table
+from euro_fsqca.qca.minimize import (
+    core_peripheral_table,
+    format_literals,
+    minimize_truth_table,
+    solution_terms,
+)
 from euro_fsqca.qca.necessity import necessity_table
 from euro_fsqca.qca.truth_table import (
-    TruthTableThresholds,
     build_truth_table,
     contradictory_rows,
     truth_table_diagnostics,
 )
 from euro_fsqca.sets.calibration import direct_calibrate
 from euro_fsqca.sets.composites import build_composite
+from euro_fsqca.survey import (
+    ANALYSIS_WEIGHT_COLUMN,
+    WeightScheme,
+    resolve_weights,
+    weight_diagnostics,
+)
+
+SOLUTION_KINDS = ("conservative", "parsimonious", "intermediate")
 
 
-def calibrate_frame(frame: pd.DataFrame, config: AnalysisConfig) -> pd.DataFrame:
-    """Construct and calibrate all configured conditions and the outcome."""
-    calibrated = frame[[config.case_id, config.country_column]].copy()
+def calibrate_frame(
+    frame: pd.DataFrame,
+    config: AnalysisConfig,
+    *,
+    names: list[str] | None = None,
+) -> pd.DataFrame:
+    """Construct and calibrate configured conditions while preserving design columns.
+
+    Survey weights, strata, timing, sector and size are carried through to the
+    calibrated table. They are needed for design-aware estimation and for the
+    subgroup robustness checks, and dropping them here would make those checks
+    silently impossible.
+    """
+    identifiers = [config.case_id, config.country_column]
+    passthrough = [
+        column
+        for column in [*config.passthrough_columns(), config.timing.period_column]
+        if column in frame.columns and column not in identifiers
+    ]
+    calibrated = frame[[*identifiers, *passthrough]].copy()
     specs: dict[str, SetSpec] = {**config.conditions, **config.outcome}
-    for name, spec in specs.items():
+    selected = names if names is not None else list(specs)
+    for name in selected:
+        if name not in specs:
+            raise KeyError(f"unknown calibrated set: {name}")
+        spec = specs[name]
         if spec.source is not None:
             if spec.source not in frame.columns:
                 raise KeyError(f"missing source column for {name}: {spec.source}")
             raw = pd.to_numeric(frame[spec.source], errors="coerce")
+            calibrated[f"{name}_raw"] = raw
         else:
             assert spec.composite is not None
             raw = build_composite(frame, spec.composite)
+            calibrated[f"{name}_raw"] = raw
         calibrated[name] = direct_calibrate(raw, spec.anchors)
     return calibrated
-
-
-def _thresholds(config: AnalysisConfig) -> TruthTableThresholds:
-    return TruthTableThresholds(
-        frequency=config.truth_table.frequency_cutoff,
-        consistency=config.truth_table.consistency_cutoff,
-        pri=config.truth_table.pri_cutoff,
-    )
-
-
-def _terms_from_solution(solution: BooleanSolution, conditions: list[str]) -> list[dict[str, bool]]:
-    """Extract conjunctions from a SymPy DNF solution."""
-    expression = sp.to_dnf(solution.sympy_expression, simplify=True)
-    if expression is sp.false:
-        return []
-    disjuncts = expression.args if isinstance(expression, sp.Or) else (expression,)
-    terms: list[dict[str, bool]] = []
-    for disjunct in disjuncts:
-        conjuncts = disjunct.args if isinstance(disjunct, sp.And) else (disjunct,)
-        literals: dict[str, bool] = {}
-        for literal in conjuncts:
-            if isinstance(literal, sp.Symbol):
-                literals[str(literal)] = True
-            elif isinstance(literal, sp.Not) and isinstance(literal.args[0], sp.Symbol):
-                literals[str(literal.args[0])] = False
-        if literals:
-            terms.append(
-                {
-                    condition: literals[condition]
-                    for condition in conditions
-                    if condition in literals
-                }
-            )
-    return terms
-
 
 
 def _membership_from_sympy(frame: pd.DataFrame, expression: sp.logic.boolalg.Boolean) -> np.ndarray:
@@ -102,28 +120,52 @@ def _membership_from_sympy(frame: pd.DataFrame, expression: sp.logic.boolalg.Boo
     raise TypeError(f"unsupported Boolean expression: {type(expression)!r}")
 
 
+def _term_membership(frame: pd.DataFrame, literals: dict[str, bool]) -> np.ndarray:
+    operands = [
+        frame[name].to_numpy(dtype=float) if present else 1.0 - frame[name].to_numpy(dtype=float)
+        for name, present in literals.items()
+    ]
+    return fuzzy_and(*operands)
+
+
+def _estimand_columns(config: AnalysisConfig) -> dict[WeightScheme, str]:
+    """Map each configured estimand to its weight column in the calibrated frame."""
+    return {scheme: f"weight_{scheme}" for scheme in config.survey.estimands}
+
+
 def _run_group(
     frame: pd.DataFrame,
     *,
     config: AnalysisConfig,
+    conditions: list[str],
     outcome: str,
     label: str,
     output_dir: Path,
 ) -> dict[str, Any]:
-    conditions = list(config.conditions)
     group_dir = output_dir / label
     group_dir.mkdir(parents=True, exist_ok=True)
-    thresholds = _thresholds(config)
+    thresholds = config.truth_table.thresholds()
+    weights = frame[ANALYSIS_WEIGHT_COLUMN] if ANALYSIS_WEIGHT_COLUMN in frame.columns else None
 
-    necessity = necessity_table(frame, conditions=conditions, outcome=outcome)
+    necessity = necessity_table(
+        frame, conditions=conditions, outcome=outcome, weights=weights
+    )
     truth = build_truth_table(
         frame,
         conditions=conditions,
         outcome=outcome,
         thresholds=thresholds,
+        weights=weights,
     )
-    conservative = minimize_truth_table(truth, conditions=conditions, kind="conservative")
-    parsimonious = minimize_truth_table(truth, conditions=conditions, kind="parsimonious")
+    solutions = {
+        kind: minimize_truth_table(
+            truth,
+            conditions=conditions,
+            kind=kind,
+            directional_expectations=config.directional_expectations,
+        )
+        for kind in SOLUTION_KINDS
+    }
 
     necessity.to_csv(group_dir / "necessity.csv", index=False)
     truth.to_csv(group_dir / "truth_table.csv", index=False)
@@ -143,60 +185,253 @@ def _run_group(
         group_dir / "difficult_rows.csv",
         index=False,
     )
-    solution_rows: list[dict[str, object]] = []
-    for solution in (conservative, parsimonious):
-        membership = _membership_from_sympy(frame, solution.sympy_expression)
-        fit = sufficiency_fit(membership, frame[outcome].to_numpy(dtype=float))
-        solution_rows.append(
-            {
-                "solution": solution.kind,
-                "expression": solution.expression,
-                "consistency": fit.consistency,
-                "coverage": fit.coverage,
-                "pri": fit.pri,
-            }
-        )
-    pd.DataFrame(solution_rows).to_csv(group_dir / "solutions.csv", index=False)
+    core_peripheral_table(solutions["intermediate"], conditions).to_csv(
+        group_dir / "core_peripheral.csv",
+        index=False,
+    )
 
-    term_rows: list[dict[str, object]] = []
-    for solution in (conservative, parsimonious):
-        for term_index, literals in enumerate(_terms_from_solution(solution, conditions), start=1):
-            # Build each term directly from its fuzzy literals for case-level fit.
-            operands = [
-                (
-                    frame[name].to_numpy(dtype=float)
-                    if present
-                    else 1.0 - frame[name].to_numpy(dtype=float)
-                )
-                for name, present in literals.items()
-            ]
-            membership = fuzzy_and(*operands)
-            fit = sufficiency_fit(membership, frame[outcome].to_numpy(dtype=float))
-            term_rows.append(
+    estimands = _estimand_columns(config)
+    solution_rows: list[dict[str, object]] = []
+    for solution in solutions.values():
+        membership = _membership_from_sympy(frame, solution.sympy_expression)
+        for estimand, column in estimands.items():
+            estimand_weights = frame[column].to_numpy() if column in frame.columns else None
+            fit = sufficiency_fit(
+                membership,
+                frame[outcome].to_numpy(dtype=float),
+                weights=estimand_weights,
+            )
+            solution_rows.append(
                 {
                     "solution": solution.kind,
-                    "term": term_index,
-                    "configuration": json.dumps(literals, sort_keys=True),
-                    "n_relevant_establishments": int((membership > 0.5).sum()),
-                    "country_distribution": _distribution_json(frame, "country", membership),
-                    "regional_distribution": _distribution_json(frame, "macroregion", membership),
+                    "estimand": estimand,
+                    "primary_estimand": estimand == config.survey.primary_estimand,
+                    "expression": solution.expression,
                     "consistency": fit.consistency,
                     "coverage": fit.coverage,
                     "pri": fit.pri,
                 }
             )
+    pd.DataFrame(solution_rows).to_csv(group_dir / "solutions.csv", index=False)
+
+    term_rows: list[dict[str, object]] = []
+    for solution in solutions.values():
+        for term_index, literals in enumerate(solution_terms(solution, conditions), start=1):
+            membership = _term_membership(frame, literals)
+            for estimand, column in estimands.items():
+                estimand_weights = frame[column].to_numpy() if column in frame.columns else None
+                fit = sufficiency_fit(
+                    membership,
+                    frame[outcome].to_numpy(dtype=float),
+                    weights=estimand_weights,
+                )
+                term_rows.append(
+                    {
+                        "solution": solution.kind,
+                        "term": term_index,
+                        "estimand": estimand,
+                        "primary_estimand": estimand == config.survey.primary_estimand,
+                        "configuration": format_literals(literals),
+                        "configuration_json": json.dumps(literals, sort_keys=True),
+                        "n_relevant_establishments": int((membership > 0.5).sum()),
+                        "country_distribution": _distribution_json(frame, "country", membership),
+                        "regional_distribution": _distribution_json(
+                            frame, "macroregion", membership
+                        ),
+                        "consistency": fit.consistency,
+                        "coverage": fit.coverage,
+                        "pri": fit.pri,
+                    }
+                )
     pd.DataFrame(term_rows).to_csv(group_dir / "solution_terms.csv", index=False)
+
+    intermediate_terms = solution_terms(solutions["intermediate"], conditions)
+    term_substitutability(intermediate_terms).to_csv(
+        group_dir / "term_substitutability.csv", index=False
+    )
 
     return {
         "label": label,
         "n": len(frame),
+        "weight_mass": float(weights.sum()) if weights is not None else float(len(frame)),
         "frequency_cutoff": thresholds.frequency,
         "consistency_cutoff": thresholds.consistency,
         "pri_cutoff": thresholds.pri,
-        "conservative": conservative.expression,
-        "parsimonious": parsimonious.expression,
+        "frequency_basis": thresholds.frequency_basis,
+        "conservative": solutions["conservative"].expression,
+        "parsimonious": solutions["parsimonious"].expression,
+        "intermediate": solutions["intermediate"].expression,
         "n_positive_rows": int(truth["positive"].sum()),
-        "conservative_object": conservative,
+        "conservative_object": solutions["conservative"],
+        "intermediate_object": solutions["intermediate"],
+    }
+
+
+def _prepare_sample(
+    frame: pd.DataFrame,
+    *,
+    config: AnalysisConfig,
+    sample: SampleSpec,
+    mapping: dict[str, str],
+) -> tuple[pd.DataFrame, pd.DataFrame, list[str]]:
+    """Select, calibrate and weight one analytical sample."""
+    conditions = list(sample.conditions or config.conditions)
+    outcome = config.outcome_name
+    selected, recorder = select_sample(
+        frame, sample=sample, weight_column=config.survey.weight_column
+    )
+    selected = assign_period(selected, config.timing)
+    calibrated = calibrate_frame(selected, config, names=[*conditions, outcome])
+    calibrated = attach_regions(
+        calibrated,
+        country_column=config.country_column,
+        mapping=mapping,
+    )
+    complete = calibrated[[*conditions, outcome]].notna().all(axis=1)
+    calibrated = calibrated.loc[complete].copy()
+    recorder.record(
+        calibrated,
+        step="complete_calibrated_sets",
+        rule=f"observed values for {', '.join([*conditions, outcome])}",
+    )
+    for scheme, column in _estimand_columns(config).items():
+        calibrated[column] = resolve_weights(
+            calibrated,
+            scheme=scheme,
+            weight_column=config.survey.weight_column,
+            country_column=config.country_column,
+        )
+    calibrated[ANALYSIS_WEIGHT_COLUMN] = calibrated[
+        _estimand_columns(config)[config.survey.primary_estimand]
+    ]
+    return calibrated, recorder.table(), conditions
+
+
+def _run_sample(
+    frame: pd.DataFrame,
+    *,
+    config: AnalysisConfig,
+    sample: SampleSpec,
+    mapping: dict[str, str],
+    alternative_schemes: dict[str, dict[str, str]],
+    output_dir: Path,
+) -> dict[str, Any]:
+    """Run the complete analysis for one analytical sample."""
+    output_dir.mkdir(parents=True, exist_ok=True)
+    outcome = config.outcome_name
+    calibrated, attrition, conditions = _prepare_sample(
+        frame, config=config, sample=sample, mapping=mapping
+    )
+    calibrated.to_csv(output_dir / "calibrated_memberships.csv", index=False)
+    attrition.to_csv(output_dir / "analytical_sample.csv", index=False)
+    weight_diagnostics(
+        calibrated,
+        weights=calibrated[ANALYSIS_WEIGHT_COLUMN],
+        group_columns=[config.country_column, "macroregion"],
+    ).to_csv(output_dir / "weight_diagnostics.csv", index=False)
+    timing_summary(calibrated, config=config).to_csv(output_dir / "survey_timing.csv", index=False)
+
+    summaries: list[dict[str, Any]] = []
+    europe = _run_group(
+        calibrated,
+        config=config,
+        conditions=conditions,
+        outcome=outcome,
+        label="europe",
+        output_dir=output_dir,
+    )
+    summaries.append(_public(europe))
+
+    regional_objects: dict[str, dict[str, Any]] = {}
+    directed_configurations: dict[str, list[dict[str, bool]]] = {}
+    for region, group in calibrated.groupby("macroregion", observed=True):
+        result = _run_group(
+            group,
+            config=config,
+            conditions=conditions,
+            outcome=outcome,
+            label=f"region_{str(region).lower()}",
+            output_dir=output_dir,
+        )
+        summaries.append(_public(result))
+        regional_objects[str(region)] = result
+        region_terms = solution_terms(result["conservative_object"], conditions)
+        if region_terms:
+            directed_configurations[str(region)] = region_terms
+
+    europe_terms = solution_terms(europe["conservative_object"], conditions)
+    _write_regional_comparison(
+        summaries,
+        europe_terms=europe_terms,
+        regional_objects=regional_objects,
+        conditions=conditions,
+        calibrated=calibrated,
+        outcome=outcome,
+        output_dir=output_dir,
+    )
+
+    # Causal asymmetry: repeat the full analysis for the negated outcome.
+    negative = calibrated.copy()
+    neg_outcome = f"NOT_{outcome}"
+    negative[neg_outcome] = 1.0 - negative[outcome]
+    negative_result = _run_group(
+        negative,
+        config=config,
+        conditions=conditions,
+        outcome=neg_outcome,
+        label="europe_negative_outcome",
+        output_dir=output_dir,
+    )
+
+    _write_portability(
+        calibrated,
+        config=config,
+        conditions=conditions,
+        outcome=outcome,
+        europe_terms=europe_terms,
+        directed_configurations=directed_configurations,
+        output_dir=output_dir,
+    )
+    _write_complementarity(
+        calibrated,
+        config=config,
+        conditions=conditions,
+        outcome=outcome,
+        europe_terms=europe_terms,
+        directed_configurations=directed_configurations,
+        intermediate_terms=solution_terms(europe["intermediate_object"], conditions),
+        output_dir=output_dir,
+    )
+    if config.robustness.enabled:
+        _write_robustness(
+            frame,
+            calibrated,
+            config=config,
+            sample=sample,
+            conditions=conditions,
+            outcome=outcome,
+            alternative_schemes=alternative_schemes,
+            output_dir=output_dir,
+        )
+    _write_net_effect_model(
+        calibrated,
+        config=config,
+        conditions=conditions,
+        outcome=outcome,
+        output_dir=output_dir,
+    )
+
+    return {
+        "sample": sample.label,
+        "primary": sample.primary,
+        "conditions": conditions,
+        "output_dir": str(output_dir),
+        "groups": summaries,
+        "negative_outcome": _public(negative_result),
+        "n_complete_calibrated": len(calibrated),
+        "weight_mass": float(calibrated[ANALYSIS_WEIGHT_COLUMN].sum()),
+        "regions": calibrated["macroregion"].value_counts().to_dict(),
+        "attrition": attrition.to_dict(orient="records"),
     }
 
 
@@ -207,90 +442,221 @@ def run_analysis(
     config_path: str | Path,
     output_dir: str | Path,
 ) -> dict[str, Any]:
-    """Run pan-European, regional, asymmetric, robustness and regression analyses."""
+    """Run every configured analytical sample end to end."""
     target = Path(output_dir)
     target.mkdir(parents=True, exist_ok=True)
 
-    calibrated = calibrate_frame(frame, config)
     regions_path = Path(config.regions_file)
     if not regions_path.is_absolute():
         regions_path = Path(config_path).resolve().parent.parent / regions_path
     mapping = load_region_map(regions_path, config.primary_region_scheme)
-    calibrated = attach_regions(
-        calibrated,
-        country_column=config.country_column,
-        mapping=mapping,
-    )
-    calibrated.to_csv(target / "calibrated_memberships.csv", index=False)
+    alternative_schemes: dict[str, dict[str, str]] = {}
+    if config.robustness.alternative_region_scheme:
+        alternative_schemes[config.robustness.alternative_region_scheme] = load_region_map(
+            regions_path, config.robustness.alternative_region_scheme
+        )
 
     outcome = config.outcome_name
-    conditions = list(config.conditions)
-    qca_specification = {
-        "conditions": conditions,
+    with (target / "qca_specification.json").open("w", encoding="utf-8") as stream:
+        json.dump(_specification(config, outcome), stream, indent=2)
+
+    sample_results: list[dict[str, Any]] = []
+    attrition_frames: list[pd.DataFrame] = []
+    for sample in config.samples.values():
+        sample_dir = target if sample.primary else target / f"sample_{sample.label}"
+        result = _run_sample(
+            frame,
+            config=config,
+            sample=sample,
+            mapping=mapping,
+            alternative_schemes=alternative_schemes,
+            output_dir=sample_dir,
+        )
+        sample_results.append(result)
+        attrition = pd.DataFrame(result["attrition"])
+        if not attrition.empty:
+            attrition_frames.append(attrition)
+    if attrition_frames:
+        pd.concat(attrition_frames, ignore_index=True).to_csv(
+            target / "analytical_samples.csv", index=False
+        )
+
+    primary = next(item for item in sample_results if item["primary"])
+    summary_payload: dict[str, Any] = {
+        "samples": sample_results,
+        "primary_sample": primary["sample"],
+        "groups": primary["groups"],
+        "negative_outcome": primary["negative_outcome"],
+        "n_complete_calibrated": primary["n_complete_calibrated"],
+        "regions": primary["regions"],
+        "estimand": config.survey.primary_estimand,
+    }
+    with (target / "summary.json").open("w", encoding="utf-8") as stream:
+        json.dump(summary_payload, stream, indent=2, default=str)
+    return summary_payload
+
+
+def _specification(config: AnalysisConfig, outcome: str) -> dict[str, Any]:
+    return {
+        "conditions": list(config.conditions),
         "outcome": outcome,
         "frequency_cutoff": config.truth_table.frequency_cutoff,
         "consistency_cutoff": config.truth_table.consistency_cutoff,
         "pri_cutoff": config.truth_table.pri_cutoff,
+        "frequency_basis": config.truth_table.frequency_basis,
         "logical_remainder_policy": {
             "conservative": "observed positive rows only",
             "parsimonious": "unobserved rows treated as logical remainders",
+            "intermediate": "easy counterfactuals only, given directional expectations",
         },
+        "directional_expectations": config.directional_expectations,
         "calibration_scope": "common Europe-wide anchors",
+        "survey_design": {
+            "weight_column": config.survey.weight_column,
+            "strata_column": config.survey.strata_column,
+            "primary_estimand": config.survey.primary_estimand,
+            "estimands": list(config.survey.estimands),
+        },
+        "timing": {
+            "year_column": config.timing.year_column,
+            "reference_period_years": config.timing.reference_period_years,
+            "periods": config.timing.periods,
+        },
+        "samples": {
+            key: {
+                "label": sample.label,
+                "primary": sample.primary,
+                "conditions": sample.conditions,
+                "description": sample.description,
+                "filters": [rule.model_dump() for rule in sample.filters],
+            }
+            for key, sample in config.samples.items()
+        },
     }
-    with (target / "qca_specification.json").open("w", encoding="utf-8") as stream:
-        json.dump(qca_specification, stream, indent=2)
-    summaries: list[dict[str, Any]] = []
-    directed_configurations: dict[str, list[dict[str, bool]]] = {}
-    europe = _run_group(
-        calibrated, config=config, outcome=outcome, label="europe", output_dir=target
-    )
-    summaries.append({key: value for key, value in europe.items() if key != "conservative_object"})
 
-    for region, group in calibrated.groupby("macroregion", observed=True):
-        result = _run_group(
-            group,
-            config=config,
-            outcome=outcome,
-            label=f"region_{str(region).lower()}",
-            output_dir=target,
+
+def _write_regional_comparison(
+    summaries: list[dict[str, Any]],
+    *,
+    europe_terms: list[dict[str, bool]],
+    regional_objects: dict[str, dict[str, Any]],
+    conditions: list[str],
+    calibrated: pd.DataFrame,
+    outcome: str,
+    output_dir: Path,
+) -> None:
+    """Compare regional solutions with the pooled solution term by term."""
+    europe = next((summary for summary in summaries if summary["label"] == "europe"), None)
+    if europe is None:
+        return
+    total_n = int(europe["n"])
+    europe_keys = {format_literals(term) for term in europe_terms}
+    rows: list[dict[str, Any]] = []
+    term_rows: list[dict[str, Any]] = []
+    for region, result in regional_objects.items():
+        region_terms = solution_terms(result["conservative_object"], conditions)
+        region_keys = {format_literals(term) for term in region_terms}
+        shared = region_keys & europe_keys
+        n_cases = int(result["n"])
+        rows.append(
+            {
+                "region": region,
+                "n_cases": n_cases,
+                "weight_mass": result["weight_mass"],
+                "relative_prevalence": n_cases / total_n if total_n else 0.0,
+                "frequency_cutoff": result["frequency_cutoff"],
+                "consistency_cutoff": result["consistency_cutoff"],
+                "pri_cutoff": result["pri_cutoff"],
+                "conservative_solution": result["conservative"],
+                "parsimonious_solution": result["parsimonious"],
+                "intermediate_solution": result["intermediate"],
+                "n_positive_rows": result["n_positive_rows"],
+                "n_terms": len(region_terms),
+                "n_terms_shared_with_europe": len(shared),
+                "n_terms_region_specific": len(region_keys - europe_keys),
+                "n_europe_terms_absent": len(europe_keys - region_keys),
+                "shared_term_share": len(shared) / len(region_keys) if region_keys else 0.0,
+                "conservative_similarity": signed_literal_jaccard(
+                    europe["conservative"], result["conservative"]
+                ),
+                "conservative_change": classify_solution_change(
+                    europe["conservative"], result["conservative"]
+                ),
+                "conservative_matches_europe": result["conservative"] == europe["conservative"],
+                "parsimonious_matches_europe": result["parsimonious"] == europe["parsimonious"],
+            }
         )
-        summaries.append(
-            {key: value for key, value in result.items() if key != "conservative_object"}
-        )
-        region_terms = _terms_from_solution(result["conservative_object"], conditions)
-        if region_terms:
-            directed_configurations[str(region)] = region_terms
-    pd.DataFrame(_regional_comparison_rows(summaries)).to_csv(
-        target / "regional_comparison.csv",
-        index=False,
-    )
+        for literals in region_terms:
+            key = format_literals(literals)
+            membership = _term_membership(calibrated, literals)
+            fit = sufficiency_fit(
+                membership,
+                calibrated[outcome].to_numpy(dtype=float),
+                weights=(
+                    calibrated[ANALYSIS_WEIGHT_COLUMN].to_numpy()
+                    if ANALYSIS_WEIGHT_COLUMN in calibrated.columns
+                    else None
+                ),
+            )
+            term_rows.append(
+                {
+                    "region": region,
+                    "configuration": key,
+                    "status": "shared_with_europe" if key in europe_keys else "region_specific",
+                    "pooled_consistency": fit.consistency,
+                    "pooled_coverage": fit.coverage,
+                    "pooled_pri": fit.pri,
+                }
+            )
+        for key in sorted(europe_keys - region_keys):
+            term_rows.append(
+                {
+                    "region": region,
+                    "configuration": key,
+                    "status": "europe_term_absent_in_region",
+                    "pooled_consistency": float("nan"),
+                    "pooled_coverage": float("nan"),
+                    "pooled_pri": float("nan"),
+                }
+            )
+    pd.DataFrame(rows).to_csv(output_dir / "regional_comparison.csv", index=False)
+    pd.DataFrame(
+        term_rows,
+        columns=[
+            "region",
+            "configuration",
+            "status",
+            "pooled_consistency",
+            "pooled_coverage",
+            "pooled_pri",
+        ],
+    ).to_csv(output_dir / "regional_term_comparison.csv", index=False)
 
-    # Causal asymmetry: repeat the full analysis for the negated outcome.
-    negative = calibrated.copy()
-    negative[f"NOT_{outcome}"] = 1.0 - negative[outcome]
-    neg_outcome = f"NOT_{outcome}"
-    negative_result = _run_group(
-        negative,
-        config=config,
-        outcome=neg_outcome,
-        label="europe_negative_outcome",
-        output_dir=target,
-    )
 
-    # Portability of each pan-European conservative term across the same regional calibration.
+def _write_portability(
+    calibrated: pd.DataFrame,
+    *,
+    config: AnalysisConfig,
+    conditions: list[str],
+    outcome: str,
+    europe_terms: list[dict[str, bool]],
+    directed_configurations: dict[str, list[dict[str, bool]]],
+    output_dir: Path,
+) -> None:
+    replicates = config.robustness.portability_bootstrap_replicates
+    rule = PortabilityThresholds(consistency=config.truth_table.consistency_cutoff)
     portability_rows: list[pd.DataFrame] = []
-    terms = _terms_from_solution(europe["conservative_object"], conditions)
-    country_configurations: dict[str, list[dict[str, bool]]] = {"europe": terms}
-    for index, literals in enumerate(terms, start=1):
+    for index, literals in enumerate(europe_terms, start=1):
         summary = evaluate_portability(
             calibrated,
             literals=literals,
             outcome=outcome,
             region_column="macroregion",
+            weight_column=ANALYSIS_WEIGHT_COLUMN,
         )
         term_table = summary.table.copy()
         term_table.insert(0, "term", index)
-        term_table.insert(1, "configuration", json.dumps(literals, sort_keys=True))
+        term_table.insert(1, "configuration", format_literals(literals))
         term_table["consistency_sd"] = summary.consistency_sd
         term_table["consistency_range"] = summary.consistency_range
         portability_rows.append(term_table)
@@ -311,78 +677,247 @@ def run_analysis(
             ]
         )
     )
-    portability.to_csv(target / "portability.csv", index=False)
-    complementarity_configurations: dict[str, list[dict[str, bool]]] = {"europe": terms}
+    portability.to_csv(output_dir / "portability.csv", index=False)
+
     directed_table, directed_matrix, directed_network = directed_portability(
         calibrated,
         configurations=directed_configurations,
         outcome=outcome,
         region_column="macroregion",
+        weight_column=ANALYSIS_WEIGHT_COLUMN,
+        thresholds=rule,
+        n_bootstrap=replicates,
+        seed=config.robustness.random_seed,
     )
-    directed_table.to_csv(target / "portability_directed.csv", index=False)
-    directed_matrix.to_csv(target / "portability_matrix.csv", index=False)
-    directed_network.to_csv(target / "portability_network.csv", index=False)
-    country_configurations.update(directed_configurations)
-    complementarity_configurations.update(directed_configurations)
-    condition_pair_matrix(complementarity_configurations).to_csv(
-        target / "complementarity_pairs.csv",
-        index=False,
-    )
+    directed_table.to_csv(output_dir / "portability_directed.csv", index=False)
+    directed_matrix.to_csv(output_dir / "portability_matrix.csv", index=False)
+    directed_network.to_csv(output_dir / "portability_network.csv", index=False)
+
+    bootstrap_directed_portability(
+        calibrated,
+        outcome=outcome,
+        conditions=conditions,
+        thresholds=config.truth_table.thresholds(),
+        region_column="macroregion",
+        weight_column=ANALYSIS_WEIGHT_COLUMN,
+        n_bootstrap=config.robustness.portability_discovery_replicates,
+        seed=config.robustness.random_seed,
+        portability=rule,
+    ).to_csv(output_dir / "portability_bootstrap.csv", index=False)
+
+    country_configurations = {"europe": europe_terms, **directed_configurations}
     country_portability(
         calibrated,
         configurations=country_configurations,
         outcome=outcome,
         country_column=config.country_column,
-    ).to_csv(target / "country_portability.csv", index=False)
+        weight_column=ANALYSIS_WEIGHT_COLUMN,
+    ).to_csv(output_dir / "country_portability.csv", index=False)
 
-    # Threshold sensitivity on the European sample.
-    if config.robustness.enabled:
-        threshold_sweep(calibrated, config=config, outcome=outcome).to_csv(
-            target / "threshold_sensitivity.csv", index=False
+
+def _write_complementarity(
+    calibrated: pd.DataFrame,
+    *,
+    config: AnalysisConfig,
+    conditions: list[str],
+    outcome: str,
+    europe_terms: list[dict[str, bool]],
+    directed_configurations: dict[str, list[dict[str, bool]]],
+    intermediate_terms: list[dict[str, bool]],
+    output_dir: Path,
+) -> None:
+    configurations = {"europe": europe_terms, **directed_configurations}
+    condition_cooccurrence(configurations).to_csv(
+        output_dir / "condition_cooccurrence.csv", index=False
+    )
+    configurational_complementarity(
+        calibrated,
+        conditions=conditions,
+        outcome=outcome,
+        weights=(
+            calibrated[ANALYSIS_WEIGHT_COLUMN]
+            if ANALYSIS_WEIGHT_COLUMN in calibrated.columns
+            else None
+        ),
+    ).to_csv(output_dir / "complementarity.csv", index=False)
+    term_substitutability(intermediate_terms).to_csv(
+        output_dir / "substitutability.csv", index=False
+    )
+
+
+def _write_robustness(
+    raw_frame: pd.DataFrame,
+    calibrated: pd.DataFrame,
+    *,
+    config: AnalysisConfig,
+    sample: SampleSpec,
+    conditions: list[str],
+    outcome: str,
+    alternative_schemes: dict[str, dict[str, str]],
+    output_dir: Path,
+) -> None:
+    threshold_sweep(
+        calibrated,
+        config=config,
+        outcome=outcome,
+        conditions=conditions,
+        weight_column=ANALYSIS_WEIGHT_COLUMN,
+    ).to_csv(output_dir / "threshold_sensitivity.csv", index=False)
+
+    def calibrator(frame: pd.DataFrame, variant: AnalysisConfig) -> pd.DataFrame:
+        selected, _ = select_sample(
+            frame, sample=sample, weight_column=variant.survey.weight_column
         )
-        anchor_sweep(frame, config=config, calibrator=calibrate_frame).to_csv(
-            target / "anchor_sensitivity.csv", index=False
+        calibrated_variant = calibrate_frame(
+            selected, variant, names=[*conditions, variant.outcome_name]
         )
+        calibrated_variant = calibrated_variant.dropna(
+            subset=[*conditions, variant.outcome_name]
+        )
+        for scheme, column in _estimand_columns(variant).items():
+            calibrated_variant[column] = resolve_weights(
+                calibrated_variant,
+                scheme=scheme,
+                weight_column=variant.survey.weight_column,
+                country_column=variant.country_column,
+            )
+        calibrated_variant[ANALYSIS_WEIGHT_COLUMN] = calibrated_variant[
+            _estimand_columns(variant)[variant.survey.primary_estimand]
+        ]
+        return calibrated_variant
+
+    anchor_sweep(
+        raw_frame,
+        config=config,
+        calibrator=calibrator,
+        conditions=conditions,
+        weight_column=ANALYSIS_WEIGHT_COLUMN,
+    ).to_csv(output_dir / "calibration_sensitivity.csv", index=False)
+
+    estimand_sweep(
+        calibrated,
+        config=config,
+        outcome=outcome,
+        conditions=conditions,
+    ).to_csv(output_dir / "estimand_sensitivity.csv", index=False)
+
+    omission_groups = [config.country_column, "sector", "size_class"]
+    if config.timing.periods:
+        omission_groups.append(config.timing.period_column)
+    for group_column in omission_groups:
+        if group_column not in calibrated.columns:
+            continue
+        name = "country" if group_column == config.country_column else group_column
         leave_one_group_out(
             calibrated,
             config=config,
             outcome=outcome,
-            group_column=config.country_column,
-        ).to_csv(target / "leave_one_country_out.csv", index=False)
-        for optional_group in ["sector", "size_class"]:
-            if optional_group in calibrated.columns:
-                leave_one_group_out(
-                    calibrated,
-                    config=config,
-                    outcome=outcome,
-                    group_column=optional_group,
-                ).to_csv(target / f"leave_one_{optional_group}_out.csv", index=False)
+            group_column=group_column,
+            conditions=conditions,
+            weight_column=ANALYSIS_WEIGHT_COLUMN,
+        ).to_csv(output_dir / f"leave_one_{name}_out.csv", index=False)
 
-    # Net-effect comparison. Fuzzy outcomes are modeled with a fractional logit.
-    regression = fit_fractional_logit(calibrated, outcome=outcome, conditions=conditions)
-    coefficients = pd.DataFrame(
-        {
-            "term": regression.params.index,
-            "estimate": regression.params.values,
-            "std_error": regression.bse.values,
-            "p_value": regression.pvalues.values,
-            "ci_lower": regression.conf_int()[0].values,
-            "ci_upper": regression.conf_int()[1].values,
-        }
+    if alternative_schemes:
+        region_scheme_comparison(
+            calibrated,
+            config=config,
+            outcome=outcome,
+            schemes=alternative_schemes,
+            conditions=conditions,
+            weight_column=ANALYSIS_WEIGHT_COLUMN,
+        ).to_csv(output_dir / "regional_taxonomy_robustness.csv", index=False)
+
+    replicates = config.robustness.bootstrap_replicates
+    if replicates:
+        bootstrap = bootstrap_qca(
+            calibrated,
+            config=config,
+            outcome=outcome,
+            n_bootstrap=replicates,
+            seed=config.robustness.random_seed,
+            conditions=conditions,
+            weight_column=ANALYSIS_WEIGHT_COLUMN,
+            strata_column=config.survey.strata_column,
+        )
+        bootstrap.to_csv(output_dir / "bootstrap_draws.csv", index=False)
+        bootstrap_stability(bootstrap).to_csv(
+            output_dir / "bootstrap_stability.csv", index=False
+        )
+        bootstrap_term_stability(bootstrap).to_csv(
+            output_dir / "bootstrap_term_stability.csv", index=False
+        )
+
+
+def _write_net_effect_model(
+    calibrated: pd.DataFrame,
+    *,
+    config: AnalysisConfig,
+    conditions: list[str],
+    outcome: str,
+    output_dir: Path,
+) -> None:
+    """Fit the conventional comparison model on the observed outcome."""
+    outcome_column = f"{outcome}_raw"
+    if outcome_column not in calibrated.columns:
+        return
+    working = calibrated.copy()
+    observed = pd.to_numeric(working[outcome_column], errors="coerce")
+    span = float(observed.max() - observed.min()) if observed.notna().any() else 0.0
+    rescaling = "none: the observed outcome already lies on the unit interval"
+    if observed.min() < 0.0 or observed.max() > 1.0:
+        if span <= 0:
+            return
+        # Rescale a bounded observed measure onto the unit interval without
+        # touching the calibration anchors, which serve a different purpose.
+        working[outcome_column] = (observed - observed.min()) / span
+        rescaling = (
+            f"min-max rescaled from [{observed.min():.6g}, {observed.max():.6g}] "
+            "onto the unit interval; this is a scale change for the link "
+            "function only and is not a calibration"
+        )
+    controls = [
+        column
+        for column in [
+            config.country_column,
+            config.timing.period_column,
+            config.timing.year_column,
+            "sector",
+            "size_class",
+        ]
+        if column and column in working.columns
+    ]
+    condition_columns = [f"{name}_raw" for name in conditions if f"{name}_raw" in working.columns]
+    if not condition_columns:
+        return
+    model = fit_net_effect_model(
+        working,
+        outcome_column=outcome_column,
+        condition_columns=condition_columns,
+        control_columns=controls,
+        weight_column=(
+            config.survey.weight_column
+            if config.survey.weight_column in working.columns
+            else None
+        ),
+        cluster_column=config.country_column,
     )
-    coefficients.to_csv(target / "fractional_logit.csv", index=False)
-
-    summary_payload: dict[str, Any] = {
-        "groups": summaries,
-        "negative_outcome": {
-            key: value for key, value in negative_result.items() if key != "conservative_object"
-        },
-        "n_complete_calibrated": int(calibrated[[*conditions, outcome]].dropna().shape[0]),
-        "regions": calibrated["macroregion"].value_counts().to_dict(),
+    model.coefficients.to_csv(output_dir / "net_effect_model.csv", index=False)
+    specification = {
+        **model.specification,
+        "outcome_rescaling": rescaling,
+        "caveat": (
+            "statsmodels reports that cov_type is not fully supported with "
+            "freq_weights: the point estimates are pseudo-maximum-likelihood "
+            "under the survey weights and the clustered errors are a sandwich "
+            "approximation, not a full design-based variance."
+        ),
     }
-    with (target / "summary.json").open("w", encoding="utf-8") as stream:
-        json.dump(summary_payload, stream, indent=2, default=str)
-    return summary_payload
+    with (output_dir / "net_effect_model.json").open("w", encoding="utf-8") as stream:
+        json.dump(specification, stream, indent=2)
+
+
+def _public(result: dict[str, Any]) -> dict[str, Any]:
+    return {key: value for key, value in result.items() if not key.endswith("_object")}
 
 
 def _distribution_json(frame: pd.DataFrame, column: str, membership: np.ndarray) -> str:
@@ -391,31 +926,3 @@ def _distribution_json(frame: pd.DataFrame, column: str, membership: np.ndarray)
     relevant = pd.Series(membership > 0.5, index=frame.index)
     counts = frame.loc[relevant, column].value_counts(dropna=False).to_dict()
     return json.dumps({str(key): int(value) for key, value in counts.items()}, sort_keys=True)
-
-
-def _regional_comparison_rows(summaries: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    europe = next((summary for summary in summaries if summary["label"] == "europe"), None)
-    if europe is None:
-        return []
-    total_n = int(europe["n"])
-    rows: list[dict[str, Any]] = []
-    for summary in summaries:
-        if summary["label"] == "europe":
-            continue
-        n_cases = int(summary["n"])
-        rows.append(
-            {
-                "region": str(summary["label"]).removeprefix("region_"),
-                "n_cases": n_cases,
-                "relative_prevalence": n_cases / total_n if total_n else 0.0,
-                "frequency_cutoff": summary["frequency_cutoff"],
-                "consistency_cutoff": summary["consistency_cutoff"],
-                "pri_cutoff": summary["pri_cutoff"],
-                "conservative_solution": summary["conservative"],
-                "parsimonious_solution": summary["parsimonious"],
-                "n_positive_rows": summary["n_positive_rows"],
-                "conservative_matches_europe": summary["conservative"] == europe["conservative"],
-                "parsimonious_matches_europe": summary["parsimonious"] == europe["parsimonious"],
-            }
-        )
-    return rows

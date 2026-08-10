@@ -1,0 +1,8 @@
+solution,term,configuration,condition,polarity,role
+intermediate,1,DIG*HC*INT,DIG,present,core
+intermediate,1,DIG*HC*INT,HC,present,core
+intermediate,1,DIG*HC*INT,INT,present,core
+intermediate,2,DIG*HC*FIN*EXTK,DIG,present,core
+intermediate,2,DIG*HC*FIN*EXTK,HC,present,core
+intermediate,2,DIG*HC*FIN*EXTK,FIN,present,core
+intermediate,2,DIG*HC*FIN*EXTK,EXTK,present,core

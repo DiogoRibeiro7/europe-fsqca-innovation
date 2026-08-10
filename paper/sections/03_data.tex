@@ -11,7 +11,25 @@ The raw WBES files are not stored in the repository. The empirical run must cite
 the source release recorded in \texttt{data/manifest.csv} and the
 release-specific mapping recorded in \texttt{configs/wbes\_variable\_map.yml}.
 
+\subsection{Sampling design}
+
+Report the sampling weight variable, the stratification variables, the fieldwork
+year by country, and the resulting weight concentration and effective sample
+size. State which estimand the headline results use and why.
+
+\subsection{Analytical samples}
+
+Report the inclusion rules for the primary sample and for the management
+extension, together with the establishments and weight mass surviving each rule.
+The management module is administered to larger establishments, so the extension
+sample describes a different population and is analysed separately.
+
 \subsection{Measurement record}
+
+The conditions below are provisional. They must be derived from the variables
+that are demonstrably comparable across the EU-27 country releases, using the
+variable-coverage audit and the standardised questionnaire, before the condition
+set is frozen.
 
 \begin{longtable}{lll}
 \toprule
@@ -22,11 +40,19 @@ DIG & Digital and technological capability & Source wording, recode, coverage \\
 HC & Human-capital capability & Source wording, recode, coverage \\
 FIN & Financial capability & Source wording, recode, coverage \\
 INT & Internationalisation & Source wording, recode, coverage \\
-MGT & Management capability & Source wording, recode, coverage \\
+MGT & Management capability (extension sample) & Source wording, recode, coverage \\
 EXTK & External knowledge integration & Source wording, recode, coverage \\
 INN & Innovation performance & Source wording, recode, coverage \\
 \bottomrule
 \end{longtable}
+
+Each row must additionally report the country releases in which the source
+variable exists and is populated, since a construct that is unavailable in part
+of the EU-27 cannot support a pan-European claim.
+
+The innovation outcome refers to the three years preceding the interview, so its
+reference window differs across countries surveyed in different years. Report
+that window explicitly.
 
 All calibration anchors must be justified before the empirical results section
 is populated.

@@ -2,7 +2,7 @@
 
 args <- commandArgs(trailingOnly = TRUE)
 install_mode <- "--install" %in% args
-required_packages <- c("renv", "QCA")
+required_packages <- c("renv", "QCA", "yaml")
 
 package_status <- data.frame(
   package = required_packages,

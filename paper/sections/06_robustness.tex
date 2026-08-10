@@ -1,21 +1,38 @@
 \section{Robustness and Sensitivity}
 
-Report threshold sweeps, calibration-anchor perturbations, alternative regional
-taxonomies, timing restrictions, and the cross-software QCA validation.
+Report threshold sweeps, calibration-anchor perturbations, the estimand
+comparison, subsample omission, alternative regional taxonomies, bootstrap
+stability, and the cross-software QCA validation. Every check below is produced
+by the analysis pipeline; a check the pipeline does not run is not reported.
 
 \begin{longtable}{ll}
 \toprule
-Check & Source artifact \\
+Check & Source artifact \
 \midrule
 \endhead
-Anchor sensitivity & \texttt{results/main/calibration\_sensitivity.csv} \\
-Threshold sensitivity & \texttt{results/main/threshold\_sensitivity.csv} \\
-Country omission & \texttt{results/main/leave\_one\_country\_out.csv} \\
-Bootstrap stability & \texttt{results/main/bootstrap\_stability.csv} \\
-Truth-table diversity & \texttt{results/main/europe/diversity\_diagnostics.csv} \\
-R validation & \texttt{results/r\_validation/solutions.csv} \\
+Anchor sensitivity & \texttt{results/main/calibration\_sensitivity.csv} \
+Threshold sensitivity & \texttt{results/main/threshold\_sensitivity.csv} \
+Estimand sensitivity & \texttt{results/main/estimand\_sensitivity.csv} \
+Country omission & \texttt{results/main/leave\_one\_country\_out.csv} \
+Sector omission & \texttt{results/main/leave\_one\_sector\_out.csv} \
+Size-class omission & \texttt{results/main/leave\_one\_size\_class\_out.csv} \
+Survey-period omission & \texttt{results/main/leave\_one\_survey\_period\_out.csv} \
+Alternative taxonomy & \texttt{results/main/regional\_taxonomy\_robustness.csv} \
+Bootstrap stability & \texttt{results/main/bootstrap\_stability.csv} \
+Term stability & \texttt{results/main/bootstrap\_term\_stability.csv} \
+Portability uncertainty & \texttt{results/main/portability\_bootstrap.csv} \
+Analytical-sample attrition & \texttt{results/main/analytical\_samples.csv} \
+Weight concentration & \texttt{results/main/weight\_diagnostics.csv} \
+Truth-table diversity & \texttt{results/main/europe/diversity\_diagnostics.csv} \
+R validation & \texttt{results/main/r\_validation/europe/solution\_terms.csv} \
+Python--R parity & \texttt{results/main/parity\_report.csv} \
 \bottomrule
 \end{longtable}
+
+Solution stability is reported with two similarity measures against the main
+specification: Jaccard similarity over signed literals and Jaccard similarity
+over whole configuration terms. The two diverge when specifications draw on the
+same literals but propose different recipes, and both are reported.
 
 Any robustness result based only on synthetic data must be labelled as a
 pipeline check and excluded from substantive interpretation.

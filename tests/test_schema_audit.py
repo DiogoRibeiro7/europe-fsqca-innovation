@@ -4,7 +4,7 @@ import json
 
 import pandas as pd
 
-from euro_fsqca.data.schema import SchemaDataset, schema_audit
+from euro_fsqca.data.schema import SchemaDataset, schema_audit, variable_coverage_matrix
 
 
 def test_schema_audit_marks_cross_file_availability() -> None:
@@ -52,3 +52,37 @@ def test_schema_audit_handles_no_sources() -> None:
 
     assert audit.empty
     assert "column" in audit.columns
+
+
+def test_variable_coverage_matrix_ranks_comparable_variables() -> None:
+    portugal = SchemaDataset(
+        source_name="PT",
+        country="Portugal",
+        survey_year="2019",
+        wbes_version="v1",
+        frame=pd.DataFrame({"everywhere": [1, 2, 3], "sparse": [1, None, None]}),
+    )
+    spain = SchemaDataset(
+        source_name="ES",
+        country="Spain",
+        survey_year="2020",
+        wbes_version="v1",
+        frame=pd.DataFrame({"everywhere": [1, 2, 3], "only_spain": [1, 2, 3]}),
+    )
+    france = SchemaDataset(
+        source_name="FR",
+        country="France",
+        survey_year="2020",
+        wbes_version="v1",
+        frame=pd.DataFrame({"everywhere": [1, 2, 3]}),
+    )
+
+    coverage = variable_coverage_matrix([portugal, spain, france])
+
+    lookup = dict(zip(coverage["column"], coverage["comparability"], strict=True))
+    assert lookup["everywhere"] == "comparable_all_countries"
+    # Present in one country only, so it cannot anchor an EU-wide construct.
+    assert lookup["only_spain"] == "rare"
+    # Present in Portugal but mostly missing, so it is not usable there either.
+    assert lookup["sparse"] == "unusable"
+    assert next(iter(coverage["column"])) == "everywhere"
