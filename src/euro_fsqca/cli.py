@@ -226,22 +226,65 @@ def run(
     input: Annotated[Path, typer.Option(help="Canonical analysis table.", is_flag=False)],
     config: Annotated[Path, typer.Option(is_flag=False)] = Path("configs/analysis.yml"),
     output_dir: Annotated[Path, typer.Option(is_flag=False)] = Path("results/main"),
-    allow_template: bool = typer.Option(
+    mapping: Annotated[Path, typer.Option(is_flag=False)] = Path(
+        "configs/wbes_variable_map.yml"
+    ),
+    manifest: Annotated[Path, typer.Option(is_flag=False)] = Path("data/manifest.csv"),
+    raw_root: Annotated[Path, typer.Option(is_flag=False)] = Path("data/raw"),
+    schema_audit: Annotated[Path, typer.Option(is_flag=False)] = Path(
+        "outputs/data/schema_audit.csv"
+    ),
+    unsafe_development_run: bool = typer.Option(
         False,
-        "--allow-template",
-        help="Run even though the configuration is marked as a template.",
+        "--unsafe-development-run",
+        help=(
+            "Bypass every readiness blocker. For software development only. "
+            "Output produced this way is not evidence and must never be published."
+        ),
     ),
 ) -> None:
-    """Run the configured fsQCA analysis."""
+    """Run the configured fsQCA analysis.
+
+    The run is gated on empirical readiness. Every blocker must be resolved,
+    not merely relabelled: flipping the configuration status to `research`
+    clears one check and leaves the rest standing.
+    """
     analysis_config = load_config(config)
-    if analysis_config.status == "template" and not allow_template:
+    report = assess_readiness(
+        config_path=config,
+        mapping_path=mapping,
+        manifest_path=manifest,
+        raw_root=raw_root,
+        schema_audit_path=schema_audit,
+    )
+    blockers = readiness_blockers(report)
+    if blockers:
+        if not unsafe_development_run:
+            typer.echo(
+                f"Refusing to run: {len(blockers)} readiness blockers remain.", err=True
+            )
+            for blocker in blockers:
+                typer.echo(f"  - {blocker}", err=True)
+            typer.echo(
+                "Resolve them and re-run, or use --unsafe-development-run for a software "
+                "smoke test whose output is not evidence.",
+                err=True,
+            )
+            raise typer.Exit(1)
+        typer.echo("=" * 78, err=True)
         typer.echo(
-            f"{config} is marked as a template: its anchors and variable mappings are "
-            "placeholders, so any output would be fictitious. Complete the design and set "
-            "status: research, or pass --allow-template for a software smoke test.",
+            "UNSAFE DEVELOPMENT RUN: "
+            f"{len(blockers)} readiness blockers were bypassed.",
             err=True,
         )
-        raise typer.Exit(1)
+        for blocker in blockers:
+            typer.echo(f"  - {blocker}", err=True)
+        typer.echo(
+            "The output of this run is NOT an empirical result. Do not publish it, "
+            "cite it, or copy it into the manuscript.",
+            err=True,
+        )
+        typer.echo("=" * 78, err=True)
     frame = read_table(input)
     summary = run_analysis(
         frame,

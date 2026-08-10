@@ -55,7 +55,9 @@ make parity
 
 `make variable-audit` ranks source variables by comparable coverage across country releases and should be run *before* the constructs are defined. `make parity` runs the canonical R/QCA engine and compares its solution terms with the Python pipeline's, exiting non-zero on any difference.
 
-`euro-fsqca run` refuses a configuration marked `status: template`. Pass `--allow-template` only for a software smoke test, never for a result.
+`euro-fsqca run` is gated on the full readiness assessment and refuses to execute while any blocker remains. Relabelling the configuration from `template` to `research` clears one check and leaves the rest standing, so the gate cannot be talked around.
+
+The single override is `--unsafe-development-run`. It bypasses every blocker, prints a warning naming each one, and states that the output is not evidence. Use it for software smoke tests only. It must never appear in a publication command.
 
 The default input and output paths can be overridden, for example:
 

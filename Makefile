@@ -73,8 +73,9 @@ parity:
 demo:
 	$(PYTHON) -m euro_fsqca.cli demo --output $(DEMO_INPUT) --n 6000 --seed 42
 
+# The synthetic demo is a software smoke test, so it must declare itself as one.
 run-demo: demo
-	$(PYTHON) -m euro_fsqca.cli run --input $(DEMO_INPUT) --config $(DEMO_CONFIG) --output-dir $(DEMO_RESULTS)
+	$(PYTHON) -m euro_fsqca.cli run --input $(DEMO_INPUT) --config $(DEMO_CONFIG) --output-dir $(DEMO_RESULTS) --unsafe-development-run
 
 run-main:
 	$(PYTHON) -m euro_fsqca.cli run --input $(ANALYSIS_INPUT) --config $(MAIN_CONFIG) --output-dir $(MAIN_RESULTS)
