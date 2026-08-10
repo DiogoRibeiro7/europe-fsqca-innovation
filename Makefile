@@ -1,5 +1,7 @@
 PYTHON ?= poetry run python
 ANALYSIS_INPUT ?= data/processed/wbes_eu27_analysis.csv
+RAW_TABLE ?= data/interim/wbes_eu27_raw.parquet
+INGEST_SPEC ?= configs/wbes_ingestion.yml
 MAIN_CONFIG ?= configs/analysis.yml
 MAIN_RESULTS ?= results/main
 DEMO_INPUT ?= data/processed/demo_raw.csv
@@ -10,7 +12,7 @@ R_INPUT ?= results/main/calibrated_memberships.csv
 R_OUTCOME ?= INN
 R_OUTPUT ?= results/main/r_validation/europe
 
-.PHONY: install lint typecheck test check readiness validate-spec validate-data schema-audit variable-audit validate-mapping check-harmonisation construct-diagnostics calibration-diagnostics r-check-env r-setup r-crosscheck parity demo run-demo run-main repro-demo clean
+.PHONY: install lint typecheck test check ingest readiness validate-spec validate-data schema-audit variable-audit validate-mapping check-harmonisation construct-diagnostics calibration-diagnostics r-check-env r-setup r-crosscheck parity demo run-demo run-main repro-demo clean
 
 install:
 	poetry install
@@ -25,6 +27,9 @@ test:
 	poetry run pytest --cov=euro_fsqca --cov-report=term-missing
 
 check: lint typecheck test
+
+ingest:
+	$(PYTHON) scripts/build_analysis_table.py --manifest data/manifest.csv --raw-root data/raw --spec $(INGEST_SPEC) --output $(RAW_TABLE)
 
 readiness:
 	$(PYTHON) -m euro_fsqca.cli readiness --config $(MAIN_CONFIG) --mapping configs/wbes_variable_map.yml --manifest data/manifest.csv --root data/raw
