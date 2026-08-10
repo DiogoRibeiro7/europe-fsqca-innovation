@@ -95,54 +95,84 @@ if (has_expectations) {
   )
 }
 
-# Term-level metrics as a canonical table. QCA::minimize returns one row per
-# configuration in IC$incl.cov plus a final solution row in some versions, so
-# rows are matched to solution terms by name.
+# Term-level metrics as a canonical table.
+#
+# QCA can return several equally minimal solution models. Exporting only the
+# first would present one arbitrary model as the result, so every model is
+# exported with a model index. With a single model the metrics live in
+# IC$incl.cov; with several they live in IC$individual[[i]]$incl.cov.
+model_metrics <- function(solution, index) {
+  if (!is.null(solution$IC$individual)) {
+    return(solution$IC$individual[[index]]$incl.cov)
+  }
+  solution$IC$incl.cov
+}
+
+model_totals <- function(solution, index) {
+  if (!is.null(solution$IC$individual)) {
+    return(solution$IC$individual[[index]]$sol.incl.cov)
+  }
+  solution$IC$sol.incl.cov
+}
+
 term_rows <- function(solution, kind) {
   if (is.null(solution)) return(NULL)
-  expressions <- as.character(solution$solution[[1]])
-  metrics <- solution$IC$incl.cov
-  if (is.null(metrics)) {
-    return(data.frame(
+  out <- list()
+  for (index in seq_along(solution$solution)) {
+    expressions <- as.character(solution$solution[[index]])
+    metrics <- model_metrics(solution, index)
+    if (is.null(metrics)) {
+      out[[length(out) + 1]] <- data.frame(
+        solution = kind,
+        model = index,
+        term = seq_along(expressions),
+        configuration = expressions,
+        consistency = NA_real_,
+        pri = NA_real_,
+        raw_coverage = NA_real_,
+        unique_coverage = NA_real_,
+        stringsAsFactors = FALSE
+      )
+      next
+    }
+    metrics <- as.data.frame(metrics)
+    metrics <- metrics[rownames(metrics) %in% expressions, , drop = FALSE]
+    out[[length(out) + 1]] <- data.frame(
       solution = kind,
-      term = seq_along(expressions),
-      configuration = expressions,
-      consistency = NA_real_,
-      pri = NA_real_,
-      raw_coverage = NA_real_,
-      unique_coverage = NA_real_,
+      model = index,
+      term = seq_len(nrow(metrics)),
+      configuration = rownames(metrics),
+      consistency = as.numeric(metrics[["inclS"]]),
+      pri = as.numeric(metrics[["PRI"]]),
+      raw_coverage = as.numeric(metrics[["covS"]]),
+      unique_coverage = as.numeric(metrics[["covU"]]),
       stringsAsFactors = FALSE
-    ))
+    )
   }
-  metrics <- as.data.frame(metrics)
-  named <- rownames(metrics)
-  keep <- named %in% expressions
-  metrics <- metrics[keep, , drop = FALSE]
-  data.frame(
-    solution = kind,
-    term = seq_len(nrow(metrics)),
-    configuration = rownames(metrics),
-    consistency = as.numeric(metrics[["inclS"]]),
-    pri = as.numeric(metrics[["PRI"]]),
-    raw_coverage = as.numeric(metrics[["covS"]]),
-    unique_coverage = as.numeric(metrics[["covU"]]),
-    stringsAsFactors = FALSE
-  )
+  do.call(rbind, out)
 }
 
 solution_rows <- function(solution, kind) {
   if (is.null(solution)) return(NULL)
-  expression <- paste(as.character(solution$solution[[1]]), collapse = " + ")
-  totals <- solution$IC$sol.incl.cov
-  data.frame(
-    solution = kind,
-    expression = expression,
-    n_terms = length(solution$solution[[1]]),
-    consistency = if (is.null(totals)) NA_real_ else as.numeric(totals[["inclS"]]),
-    pri = if (is.null(totals)) NA_real_ else as.numeric(totals[["PRI"]]),
-    coverage = if (is.null(totals)) NA_real_ else as.numeric(totals[["covS"]]),
-    stringsAsFactors = FALSE
-  )
+  essential <- if (is.null(solution$IC$essential)) character(0) else as.character(solution$IC$essential)
+  out <- list()
+  for (index in seq_along(solution$solution)) {
+    expression <- paste(as.character(solution$solution[[index]]), collapse = " + ")
+    totals <- model_totals(solution, index)
+    out[[length(out) + 1]] <- data.frame(
+      solution = kind,
+      model = index,
+      n_models = length(solution$solution),
+      expression = expression,
+      n_terms = length(solution$solution[[index]]),
+      consistency = if (is.null(totals)) NA_real_ else as.numeric(totals[["inclS"]]),
+      pri = if (is.null(totals)) NA_real_ else as.numeric(totals[["PRI"]]),
+      coverage = if (is.null(totals)) NA_real_ else as.numeric(totals[["covS"]]),
+      essential_terms = paste(essential, collapse = " + "),
+      stringsAsFactors = FALSE
+    )
+  }
+  do.call(rbind, out)
 }
 
 terms <- do.call(rbind, list(
@@ -155,6 +185,13 @@ solutions <- do.call(rbind, list(
   solution_rows(parsimonious, "parsimonious"),
   solution_rows(intermediate, "intermediate")
 ))
+
+for (kind in unique(solutions$solution)) {
+  count <- max(solutions$n_models[solutions$solution == kind])
+  if (count > 1) {
+    message("Model ambiguity: ", kind, " solution has ", count, " equally minimal models")
+  }
+}
 
 write.csv(terms, file.path(output_dir, "solution_terms.csv"), row.names = FALSE)
 write.csv(solutions, file.path(output_dir, "solutions.csv"), row.names = FALSE)

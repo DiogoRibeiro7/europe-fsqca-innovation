@@ -89,6 +89,29 @@ engines need not return the same one. Covers are therefore compared
 semantically with `solutions_equivalent`, so an alternative cover of the same
 configurations is not reported as a disagreement.
 
+## Multiple minimal models
+
+QCA can return several equally minimal solution models. On the CVF reference
+data the parsimonious solution has four. Exporting only the first would present
+an arbitrary choice as the result, so `r/qca_crosscheck.R` exports every model
+with a `model` index and per-model fit, and logs a message when more than one
+exists.
+
+`<group>/solution_ambiguity.csv` grades each configuration by how much of the
+model space supports it:
+
+| Status | Meaning |
+| --- | --- |
+| `invariant` | In every minimal model. The finding does not depend on model choice. |
+| `partial` | In some models. Reporting it as *the* result is a choice that must be declared. |
+| `model_specific` | In exactly one model. The weakest form of support. |
+| `single_model` | Minimisation was unambiguous. |
+
+Parity compares the Python cover against the R model it reproduces, chosen by
+logical equivalence rather than by position. Comparing against model 1 by
+default would report ambiguity as disagreement. The remaining ambiguity is
+surfaced in the parity report as `EQUIVALENT_ALTERNATIVE` rows.
+
 ## What is compared, and what is not
 
 Conservative and parsimonious solutions are compared and must agree: both

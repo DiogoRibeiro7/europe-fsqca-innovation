@@ -51,6 +51,7 @@ required_outputs:
   - europe/truth_table.csv
   - europe/solution_terms.csv
   - europe/core_peripheral.csv
+  - europe/solution_ambiguity.csv
   - regional_comparison.csv
   - regional_term_comparison.csv
   - portability_directed.csv

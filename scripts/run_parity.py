@@ -30,6 +30,8 @@ from euro_fsqca.analysis.parity import (
     load_python_solution_terms,
     load_r_solution_terms,
     parity_status_summary,
+    select_comparable_model,
+    solution_ambiguity,
     solutions_equivalent,
 )
 from euro_fsqca.config import load_config
@@ -144,10 +146,30 @@ def compare_group(
     if python_terms.exists() and r_terms.exists():
         python_frame = load_python_solution_terms(python_terms, conditions)
         r_frame = load_r_solution_terms(r_terms, conditions)
+
+        # Every minimal model is exported; record how much of the model space
+        # supports each configuration before comparing against any one of them.
+        ambiguity = solution_ambiguity(r_frame)
+        if not ambiguity.empty:
+            ambiguity.to_csv(group_dir / "solution_ambiguity.csv", index=False)
+
         comparable = list(COMPARABLE_SOLUTIONS)
+        chosen = {
+            solution: select_comparable_model(
+                python_frame, r_frame, solution=solution, conditions=conditions
+            )
+            for solution in comparable
+        }
+        r_comparable = pd.concat(
+            [
+                r_frame[(r_frame["solution"] == solution) & (r_frame.get("model", 1) == model)]
+                for solution, model in chosen.items()
+            ],
+            ignore_index=True,
+        ) if "model" in r_frame.columns else r_frame[r_frame["solution"].isin(comparable)]
         terms = compare_solution_terms(
             python_frame[python_frame["solution"].isin(comparable)],
-            r_frame[r_frame["solution"].isin(comparable)],
+            r_comparable,
         )
         terms = annotate_equivalent_alternatives(
             terms, python_terms=python_frame, r_terms=r_frame, conditions=conditions
@@ -157,6 +179,7 @@ def compare_group(
         frames.append(
             _reference_only_rows(python_frame, r_frame, conditions=conditions)
         )
+        frames.append(_ambiguity_rows(ambiguity))
 
     frames = [frame for frame in frames if not frame.empty]
     if not frames:
@@ -164,6 +187,30 @@ def compare_group(
     combined = pd.concat(frames, ignore_index=True, sort=False)
     combined.insert(0, "group", group)
     return combined
+
+
+def _ambiguity_rows(ambiguity: pd.DataFrame) -> pd.DataFrame:
+    """Surface model ambiguity in the parity report itself."""
+    if ambiguity.empty:
+        return pd.DataFrame()
+    ambiguous = ambiguity[ambiguity["status"].isin(["partial", "model_specific"])]
+    if ambiguous.empty:
+        return pd.DataFrame()
+    rows = [
+        {
+            "object": "solution_ambiguity",
+            "solution": row["solution"],
+            "configuration": row["configuration"],
+            "metric": "model_support",
+            "status": "EQUIVALENT_ALTERNATIVE",
+            "detail": (
+                f"present in {row['n_models_containing']} of {row['n_models']} minimal "
+                f"models ({row['status']}); the choice of model is not a finding"
+            ),
+        }
+        for _, row in ambiguous.iterrows()
+    ]
+    return pd.DataFrame(rows)
 
 
 def _reference_only_rows(
