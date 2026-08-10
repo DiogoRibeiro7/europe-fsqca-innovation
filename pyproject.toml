@@ -5,6 +5,7 @@ description = "Reproducible fsQCA study of configurational pathways to firm inno
 authors = ["Diogo Ribeiro"]
 readme = "README.md"
 packages = [{ include = "euro_fsqca", from = "src" }]
+include = ["src/euro_fsqca/py.typed"]
 
 [tool.poetry.dependencies]
 python = ">=3.11,<3.14"
