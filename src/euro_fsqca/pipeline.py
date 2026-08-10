@@ -19,6 +19,7 @@ from euro_fsqca.analysis.regression import fit_fractional_logit
 from euro_fsqca.analysis.robustness import anchor_sweep, leave_one_group_out, threshold_sweep
 from euro_fsqca.config import AnalysisConfig, SetSpec
 from euro_fsqca.data.regions import attach_regions, load_region_map
+from euro_fsqca.qca.diagnostics import difficult_rows, diversity_diagnostics
 from euro_fsqca.qca.fuzzy import fuzzy_and, fuzzy_not, fuzzy_or, sufficiency_fit
 from euro_fsqca.qca.minimize import BooleanSolution, minimize_truth_table
 from euro_fsqca.qca.necessity import necessity_table
@@ -131,6 +132,14 @@ def _run_group(
     )
     contradictory_rows(truth, thresholds=thresholds).to_csv(
         group_dir / "contradictory_rows.csv",
+        index=False,
+    )
+    diversity_diagnostics(truth, thresholds=thresholds).to_csv(
+        group_dir / "diversity_diagnostics.csv",
+        index=False,
+    )
+    difficult_rows(truth, thresholds=thresholds).to_csv(
+        group_dir / "difficult_rows.csv",
         index=False,
     )
     solution_rows: list[dict[str, object]] = []
