@@ -1,6 +1,24 @@
 # Configurational Pathways to Firm Innovation Across Europe
 
-Research repository for a comparative fuzzy-set Qualitative Comparative Analysis (fsQCA) of firm innovation across Europe, with explicit comparison of Northern/Western, Southern, and Central/Eastern European macroregions.
+Reproducible research repository for a comparative fuzzy-set Qualitative Comparative Analysis (fsQCA) of firm innovation across Europe. The project tests whether capability configurations associated with high innovation are pan-European or context-dependent across Northern/Western, Southern, and Central/Eastern Europe.
+
+Current release: `v0.2.0`
+
+## What this repository provides
+
+- Typed Python package for calibration, truth-table construction, minimisation, diagnostics, robustness checks, and reporting.
+- Configured research design with separate files for study specification, calibration choices, regional taxonomy, and WBES variable mapping.
+- Privacy-safe data provenance and schema-validation workflow for licensed World Bank Enterprise Survey microdata.
+- Synthetic pipeline run for software validation only.
+- R/QCA cross-check workflow for independent validation.
+- LaTeX manuscript scaffold, novelty review, internal review records, and release report.
+
+## What this repository does not include
+
+- Raw or case-level WBES microdata.
+- Verified release-specific WBES variable mappings.
+- Empirical findings from EU-27 firms.
+- Final calibration justifications.
 
 ## Research question
 
@@ -73,13 +91,13 @@ tables, figures, R validation, manuscript, release report
 
 ## Important data-access note
 
-World Bank Enterprise Survey microdata should not be committed to this repository. Obtain the required EU-27 files through the World Bank Enterprise Surveys / Microdata Library under the applicable access terms, place them under `data/raw/`, and run the schema inspector before mapping variables.
+World Bank Enterprise Survey microdata should not be committed to this repository. Obtain the required EU-27 files through the World Bank Enterprise Surveys / Microdata Library under the applicable access terms, place them under `data/raw/`, and validate the local manifest before mapping variables.
 
 The repository intentionally does **not** hard-code guessed WBES variable names. Survey releases can differ. Instead, `configs/wbes_variable_map.yml` is an auditable mapping worksheet.
 
 ## Quick start with synthetic data
 
-The synthetic demo exists only to validate the computational pipeline. It must never be used as empirical evidence.
+The synthetic demo validates the computational pipeline. It must never be used as empirical evidence.
 
 ```bash
 poetry install
@@ -108,21 +126,29 @@ Generated outputs include:
 - necessity diagnostics
 - conservative and parsimonious Boolean solutions
 - analysis of the negated outcome
-- portability of European configurations across macroregions
+- portability of European configurations across macroregions and countries
 - threshold-sensitivity results
+- calibration-sensitivity results
+- bootstrap and omission checks
 - fractional-logit comparison
 
 ## Working with WBES microdata
 
-### 1. Inspect the exact release
+### 1. Validate source provenance
 
 ```bash
-PYTHONPATH=src python -m euro_fsqca.cli inspect \
+make validate-data
+```
+
+### 2. Inspect the exact release
+
+```bash
+poetry run python -m euro_fsqca.cli inspect \
   data/raw/<your_wbes_file>.dta \
   --output results/wbes_schema.csv
 ```
 
-### 2. Complete the semantic variable mapping
+### 3. Complete the semantic variable mapping
 
 Edit:
 
@@ -132,7 +158,13 @@ configs/wbes_variable_map.yml
 
 Record the exact source variables, recodes, missing-value rules, and construct definitions.
 
-### 3. Create the analytical table
+Then run:
+
+```bash
+make validate-mapping
+```
+
+### 4. Create the analytical table
 
 The final pre-calibration table should contain at least:
 
@@ -142,17 +174,22 @@ firm_id, country, DIG_raw, HC_raw, FIN_raw, INT_raw, MGT_raw, EXTK_raw, INN_raw
 
 The construction of every `_raw` variable must be documented and reproducible.
 
-### 4. Set calibration anchors
+### 5. Set calibration anchors
 
 Edit `configs/analysis.yml`. The placeholder anchors are not empirical recommendations. Each exclusion, crossover, and inclusion anchor needs a substantive justification.
 
-### 5. Run the main analysis
+### 6. Run diagnostics
 
 ```bash
-PYTHONPATH=src python -m euro_fsqca.cli run \
-  --input data/processed/wbes_eu27_analysis.csv \
-  --config configs/analysis.yml \
-  --output-dir results/main
+make check-harmonisation
+make construct-diagnostics
+make calibration-diagnostics
+```
+
+### 7. Run the main analysis
+
+```bash
+make run-main
 ```
 
 ## Main methodological safeguards
@@ -184,7 +221,29 @@ Python quality conventions are documented in `docs/python_quality.md`.
 
 ## Reproducibility commands
 
-The canonical command list is maintained in `docs/reproducibility_commands.md`. Use `make run-demo` for a synthetic pipeline check, and use `make validate-data`, `make schema-audit`, `make validate-mapping`, `make check-harmonisation`, `make construct-diagnostics`, `make calibration-diagnostics`, and `make run-main` after the licensed WBES files and analytical table are available locally.
+The canonical command list is maintained in `docs/reproducibility_commands.md`.
+
+Most common commands:
+
+```bash
+make validate-spec
+make run-demo
+make check
+make r-check-env
+```
+
+Empirical commands after licensed WBES files and the analytical table are available locally:
+
+```bash
+make validate-data
+make schema-audit
+make validate-mapping
+make check-harmonisation
+make construct-diagnostics
+make calibration-diagnostics
+make run-main
+make r-crosscheck
+```
 
 ## Manuscript
 
@@ -193,6 +252,8 @@ The LaTeX scaffold under `paper/` mirrors the empirical workflow. It is intentio
 ## Status
 
 `v0.2.0` is a complete methodological scaffold with a runnable synthetic demonstration, study specification, diagnostics, manuscript shell, review records, and release report. The remaining empirical dependency is the exact EU-27 WBES microdata release, verified variable mapping, and justified calibration anchors.
+
+Release details are recorded in `docs/release_report.md`.
 
 ## Docker
 
