@@ -2,21 +2,38 @@
 
 R/QCA is the **canonical publication engine** for truth tables and minimisation in this project. The Python implementation is the independent numerical cross-check. See `docs/python_r_validation.md` for the division of authority.
 
+## Restore the Locked Environment
+
+`renv.lock` pins the exact R and package versions used for the canonical
+analysis. From a clean checkout:
+
+```r
+renv::restore()
+```
+
+The lockfile records R 4.5.1 with `QCA` 3.25 and its dependencies (`admisc`,
+`declared`, `venn`) plus `yaml`. Do not run the canonical analysis against
+manually installed packages that are not in the lockfile: the published solution
+must be attributable to a known engine version.
+
+`.Rprofile` activates `renv` automatically for every R session started in this
+project. `renv/library/` is deliberately not under version control.
+
+After changing R dependencies:
+
+```r
+renv::snapshot()
+```
+
 ## Check Local Packages
 
 ```bash
 Rscript r/setup_renv.R
 ```
 
-This reports whether `renv`, `QCA` and `yaml` are available. It does not install anything.
-
-## Install Packages
-
-```bash
-Rscript r/setup_renv.R --install
-```
-
-This initializes `renv` when needed and installs the CRAN packages. Commit an `renv.lock` file only after package versions are installed and verified locally.
+This reports whether `renv`, `QCA` and `yaml` are available. It does not install
+anything, and it is a convenience only: `renv::restore()` is the reproducible
+path.
 
 ## Run the Canonical Analysis
 

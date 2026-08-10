@@ -35,3 +35,13 @@ paper/*.log
 paper/*.out
 paper/*.pdf
 paper/*.synctex.gz
+
+# renv keeps the lockfile and activation script under version control and the
+# installed library out of it. Restore with renv::restore().
+renv/library/
+renv/staging/
+renv/local/
+renv/cellar/
+renv/sandbox/
+renv/python/
+.rlib/
