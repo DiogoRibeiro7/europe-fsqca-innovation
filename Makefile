@@ -5,8 +5,13 @@ MAIN_RESULTS ?= results/main
 DEMO_INPUT ?= data/processed/demo_raw.csv
 DEMO_CONFIG ?= configs/analysis.demo.yml
 DEMO_RESULTS ?= results/demo
+R_SCRIPT ?= Rscript
+R_INPUT ?= results/main/calibrated_memberships.csv
+R_OUTCOME ?= INN
+R_CONDITIONS ?= DIG,HC,FIN,INT,MGT,EXTK
+R_OUTPUT ?= results/r_validation
 
-.PHONY: install lint typecheck test check validate-spec validate-data schema-audit validate-mapping check-harmonisation construct-diagnostics calibration-diagnostics demo run-demo run-main repro-demo clean
+.PHONY: install lint typecheck test check validate-spec validate-data schema-audit validate-mapping check-harmonisation construct-diagnostics calibration-diagnostics r-check-env r-setup r-crosscheck demo run-demo run-main repro-demo clean
 
 install:
 	poetry install
@@ -42,6 +47,15 @@ construct-diagnostics:
 
 calibration-diagnostics:
 	$(PYTHON) -m euro_fsqca.cli calibration-diagnostics --input $(ANALYSIS_INPUT) --config $(MAIN_CONFIG)
+
+r-check-env:
+	$(R_SCRIPT) r/setup_renv.R
+
+r-setup:
+	$(R_SCRIPT) r/setup_renv.R --install
+
+r-crosscheck:
+	$(R_SCRIPT) r/qca_crosscheck.R $(R_INPUT) $(R_OUTCOME) $(R_CONDITIONS) $(R_OUTPUT)
 
 demo:
 	$(PYTHON) -m euro_fsqca.cli demo --output $(DEMO_INPUT) --n 6000 --seed 42
