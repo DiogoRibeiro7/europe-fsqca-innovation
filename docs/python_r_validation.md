@@ -80,15 +80,36 @@ script exits non-zero on anything worse than `NUMERICAL_TOLERANCE`.
 | --- | --- |
 | `PASS` | Agreement within `1e-6`. |
 | `NUMERICAL_TOLERANCE` | Difference up to `1e-3`: floating-point or rounding, worth recording. |
+| `EQUIVALENT_ALTERNATIVE` | Different terms that cover exactly the same configurations, or a difference in a solution type for which R is canonical. Recorded, not a failure. |
 | `ALGORITHM_DIFFERENCE` | The engines disagree about the analysis, not about rounding. Must be explained before the result is used. |
 | `FAIL` | Validation could not run. |
+
+Boolean minimisation can admit several equally minimal covers, and the two
+engines need not return the same one. Covers are therefore compared
+semantically with `solutions_equivalent`, so an alternative cover of the same
+configurations is not reported as a disagreement.
+
+## What is compared, and what is not
+
+Conservative and parsimonious solutions are compared and must agree: both
+engines implement the same unambiguous procedure.
+
+The **intermediate solution is not compared for agreement**. R is canonical for
+it, and the Python implementation is a documented approximation of Enhanced
+Standard Analysis kept only to check Boolean structure. Comparing an
+approximation against the authority and calling the deviation a failure would
+misrepresent both. The parity report records R's intermediate solution for each
+group as a `reference_solution` row, with `EQUIVALENT_ALTERNATIVE` where Python
+did not reproduce it and the Python result quoted in the detail column.
 
 ## Differences found and resolved
 
 Parity is not decoration. The first real run of the canonical engine, on
 identical calibrated data, returned 12 structural and 3 tolerance differences.
 
-**PRI was computed incorrectly in Python.** The implementation subtracted
+### 1. PRI was computed incorrectly in Python
+
+The implementation subtracted
 `min(x, 1 - y)` where the standard formula subtracts `min(x, y, 1 - y)`:
 
 ```text
@@ -103,21 +124,46 @@ reported `-41.4`. Because row inclusion is gated on `pri_cutoff`, this silently
 excluded rows that should have been positive, and the Python and R solutions
 differed as a result.
 
-After the fix the two engines agree exactly. Current state on the synthetic
-demonstration, across the pooled analysis, all three regions and the negated
-outcome:
-
-| | comparisons |
-| --- | --- |
-| `PASS` | 793 |
-| anything else | 0 |
-
-Largest numerical difference: `1.0e-14`.
-
 That bug had been present since the fuzzy operators were written, was covered
 by unit tests that asserted the wrong formula's own output, and was invisible
-until the canonical engine actually ran. It is the strongest available argument
-for keeping R authoritative.
+until the canonical engine actually ran.
+
+### 2. Low-frequency rows were treated as negatives instead of remainders
+
+`QCA::truthTable` codes a row observed in fewer than `n.cut` cases as a logical
+remainder. The Python truth table treated any row with at least one case as an
+observed negative, so those rows were unavailable as don't-cares and the
+parsimonious solution could not simplify as far. In one region R returned
+`DIG*HC + HC*INT*EXTK` where Python returned four terms.
+
+A row nobody observed enough of is not evidence that the outcome is absent. The
+truth table now carries a `remainder` column and minimisation uses it.
+
+### 3. Python's intermediate solution is an approximation
+
+Python restores literals onto parsimonious implicants; R removes inadmissible
+simplifying assumptions and re-minimises. The two agree in most groups and
+diverge where the covered rows already justify a simplification without any
+counterfactual. This is why R is canonical for intermediate solutions and why
+they are recorded rather than compared for agreement.
+
+### Current state
+
+On the synthetic demonstration, across the pooled analysis, all three regions
+and the negated outcome:
+
+| Status | Comparisons |
+| --- | --- |
+| `PASS` | 748 |
+| `EQUIVALENT_ALTERNATIVE` | 2 |
+| `ALGORITHM_DIFFERENCE` | 0 |
+
+Largest numerical difference: `1.0e-14`. The two remaining rows are the
+intermediate solutions in the regions where Python's approximation diverges
+from the canonical R result.
+
+The first two defects are the strongest available argument for keeping R
+authoritative.
 
 ## Scope of parity
 

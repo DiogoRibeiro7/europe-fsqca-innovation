@@ -27,6 +27,20 @@ def _minterm(row: pd.Series, conditions: list[str]) -> list[int]:
     return [int(row[condition]) for condition in conditions]
 
 
+def _remainder_mask(truth_table: pd.DataFrame) -> pd.Series:
+    """Return the rows treated as logical remainders.
+
+    A row is a remainder when it carries too little evidence to be counted
+    either way. That includes unobserved rows and, following the canonical
+    ``n.cut`` semantics, rows observed in fewer cases than the frequency
+    threshold. Tables built by hand without the ``remainder`` column fall back
+    to the unobserved rows alone.
+    """
+    if "remainder" in truth_table.columns:
+        return truth_table["remainder"].astype(bool)
+    return ~truth_table["observed"].astype(bool)
+
+
 def _format_expression(expression: sp.logic.boolalg.Boolean, conditions: list[str]) -> str:
     """Convert a SymPy DNF expression to conventional QCA notation."""
     symbol_map = {str(sp.Symbol(condition)): condition for condition in conditions}
@@ -147,7 +161,8 @@ def minimize_truth_table(
     dontcares: list[list[int]] = []
     if kind == "parsimonious":
         dontcares = [
-            _minterm(row, conditions) for _, row in truth_table[~truth_table["observed"]].iterrows()
+            _minterm(row, conditions)
+            for _, row in truth_table[_remainder_mask(truth_table)].iterrows()
         ]
 
     expression = sp.SOPform(symbols, positives, dontcares=dontcares)
@@ -186,7 +201,7 @@ def intermediate_solution(
     }
     remainder_rows = {
         tuple(_minterm(row, conditions))
-        for _, row in truth_table[~truth_table["observed"].astype(bool)].iterrows()
+        for _, row in truth_table[_remainder_mask(truth_table)].iterrows()
     }
 
     derived: list[tuple[dict[str, bool], dict[str, bool]]] = []

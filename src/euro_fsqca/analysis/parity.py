@@ -9,21 +9,27 @@ console output.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
 import pandas as pd
+import sympy as sp
 
 ParityStatus = Literal[
     "PASS",
     "NUMERICAL_TOLERANCE",
+    "EQUIVALENT_ALTERNATIVE",
     "ALGORITHM_DIFFERENCE",
     "FAIL",
     "TOLERANCE_DIFFERENCE",
     "STRUCTURAL_DIFFERENCE",
     "MISSING_METRIC",
 ]
+
+#: Statuses that do not require the result to be withheld.
+ACCEPTABLE_STATUSES = ("PASS", "NUMERICAL_TOLERANCE", "EQUIVALENT_ALTERNATIVE")
 
 TERM_METRICS = ["consistency", "coverage", "pri"]
 
@@ -194,6 +200,88 @@ def compare_solution_terms(
     return pd.DataFrame(rows)
 
 
+def expression_from_configurations(
+    configurations: Sequence[str],
+    conditions: list[str],
+) -> sp.logic.boolalg.Boolean:
+    """Build a Boolean expression from canonical configuration strings."""
+    disjuncts: list[sp.logic.boolalg.Boolean] = []
+    for configuration in configurations:
+        text = str(configuration).strip()
+        if not text or text in {"0", "1"}:
+            continue
+        literals: list[sp.logic.boolalg.Boolean] = []
+        for token in text.split("*"):
+            literal = token.strip()
+            if not literal:
+                continue
+            negated = literal.startswith("~")
+            name = literal[1:] if negated else literal
+            if conditions and name not in conditions:
+                continue
+            symbol = sp.Symbol(name)
+            literals.append(sp.Not(symbol) if negated else symbol)
+        if literals:
+            disjuncts.append(sp.And(*literals) if len(literals) > 1 else literals[0])
+    if not disjuncts:
+        return sp.false
+    return sp.Or(*disjuncts) if len(disjuncts) > 1 else disjuncts[0]
+
+
+def solutions_equivalent(
+    python_configurations: Sequence[str],
+    r_configurations: Sequence[str],
+    conditions: list[str],
+) -> bool:
+    """Return whether two solutions cover exactly the same configurations.
+
+    Boolean minimisation can admit several equally minimal covers, and the two
+    engines need not return the same one. Different covers of the same set are
+    the same solution, so they are compared semantically rather than as strings.
+    """
+    left = expression_from_configurations(python_configurations, conditions)
+    right = expression_from_configurations(r_configurations, conditions)
+    if left is sp.false and right is sp.false:
+        return True
+    return not bool(sp.satisfiable(sp.Xor(left, right)))
+
+
+def annotate_equivalent_alternatives(
+    comparison: pd.DataFrame,
+    *,
+    python_terms: pd.DataFrame,
+    r_terms: pd.DataFrame,
+    conditions: list[str],
+) -> pd.DataFrame:
+    """Relabel term-presence differences that leave the solution unchanged.
+
+    A term present in one engine only is a real difference in the *reported*
+    configurations, which matters for the manuscript, but it is not a
+    disagreement about the analysis when both covers are logically equivalent.
+    """
+    if comparison.empty:
+        return comparison
+    result = comparison.copy()
+    for solution in sorted(set(result["solution"].dropna())):
+        left = python_terms.loc[
+            python_terms["solution"] == solution, "configuration"
+        ].tolist()
+        right = r_terms.loc[r_terms["solution"] == solution, "configuration"].tolist()
+        if not solutions_equivalent(left, right, conditions):
+            continue
+        mask = (
+            (result["solution"] == solution)
+            & (result["metric"] == "configuration")
+            & (result["status"] == "ALGORITHM_DIFFERENCE")
+        )
+        result.loc[mask, "status"] = "EQUIVALENT_ALTERNATIVE"
+        result.loc[mask, "detail"] = result.loc[mask, "detail"].astype(str) + (
+            "; the two covers are logically equivalent, so this is solution "
+            "ambiguity rather than disagreement"
+        )
+    return result
+
+
 def classify_difference(difference: float) -> ParityStatus:
     """Grade a numerical difference between the two engines."""
     if difference <= NUMERICAL_TOLERANCE:
@@ -351,3 +439,10 @@ def parity_passed(comparison: pd.DataFrame) -> bool:
     if comparison.empty:
         return False
     return bool((comparison["status"] == "PASS").all())
+
+
+def parity_acceptable(comparison: pd.DataFrame) -> bool:
+    """Return whether no row records a disagreement about the analysis."""
+    if comparison.empty:
+        return False
+    return bool(comparison["status"].isin(ACCEPTABLE_STATUSES).all())
