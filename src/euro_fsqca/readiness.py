@@ -39,6 +39,7 @@ def assess_readiness(
     mapping_path: str | Path,
     manifest_path: str | Path,
     raw_root: str | Path = "data/raw",
+    schema_audit_path: str | Path = "outputs/data/schema_audit.csv",
 ) -> pd.DataFrame:
     """Return a table of readiness checks for an empirical run."""
     items: list[ReadinessItem] = []
@@ -49,6 +50,7 @@ def assess_readiness(
         items.append(ReadinessItem("analysis_config", FATAL, f"cannot load config: {exc}"))
 
     items.append(_check_manifest(manifest_path, raw_root))
+    items.append(_check_schema_audit(schema_audit_path))
     items.extend(_check_mapping(mapping_path))
     if config is not None:
         items.extend(_check_config(config))
@@ -92,6 +94,29 @@ def _check_manifest(manifest_path: str | Path, raw_root: str | Path) -> Readines
             f"{len(missing)} recorded source files are not present under {raw_root}",
         )
     return ReadinessItem("data_manifest", OK, f"{len(entries)} source files recorded and present")
+
+
+def _check_schema_audit(schema_audit_path: str | Path) -> ReadinessItem:
+    path = Path(schema_audit_path)
+    if not path.exists():
+        return ReadinessItem(
+            "schema_audit",
+            FATAL,
+            f"no schema audit at {schema_audit_path}; run it against the real releases "
+            "before mapping any variable",
+        )
+    try:
+        audit = pd.read_csv(path)
+    except Exception as exc:
+        return ReadinessItem("schema_audit", FATAL, f"unreadable schema audit: {exc}")
+    if audit.empty:
+        return ReadinessItem("schema_audit", FATAL, "the schema audit is empty")
+    sources = int(audit["source_name"].nunique()) if "source_name" in audit.columns else 0
+    return ReadinessItem(
+        "schema_audit",
+        OK,
+        f"schema audit covers {sources} source files",
+    )
 
 
 def _check_mapping(mapping_path: str | Path) -> list[ReadinessItem]:
@@ -191,6 +216,51 @@ def _check_config(config: AnalysisConfig) -> list[ReadinessItem]:
                 OK if config.timing.periods else WARNING,
                 "survey year is carried through; "
                 + ("periods declared" if config.timing.periods else "no periods declared"),
+            )
+        )
+
+    primary = config.primary_sample
+    primary_conditions = list(primary.conditions or [])
+    if len(primary_conditions) < 2:
+        items.append(
+            ReadinessItem(
+                "condition_set",
+                FATAL,
+                "the primary sample defines fewer than two conditions, so there is no "
+                "configuration to analyse",
+            )
+        )
+    else:
+        items.append(
+            ReadinessItem(
+                "condition_set",
+                OK,
+                f"primary sample {primary.label} analyses " + ", ".join(primary_conditions),
+            )
+        )
+
+    # A condition measured on part of the frame must be confined to a sample
+    # whose eligibility rule is executable, not described in a comment.
+    unfiltered = sorted(
+        sample.label
+        for sample in config.samples.values()
+        if not sample.primary and not sample.filters
+    )
+    if unfiltered:
+        items.append(
+            ReadinessItem(
+                "sample_filters",
+                FATAL,
+                "restricted samples declare no executable filters: " + ", ".join(unfiltered)
+                + ". Encode the questionnaire eligibility rule or remove the sample.",
+            )
+        )
+    else:
+        items.append(
+            ReadinessItem(
+                "sample_filters",
+                OK,
+                f"{len(config.samples)} samples declared with executable inclusion rules",
             )
         )
 
