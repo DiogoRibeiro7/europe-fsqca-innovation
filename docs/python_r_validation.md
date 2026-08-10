@@ -34,3 +34,23 @@ Default numerical tolerance is `1e-6` for consistency, coverage, and PRI. If Pyt
 ## Required Reports
 
 The Europe-wide solution and each main regional solution need an R validation report before being used as substantive evidence.
+
+## Environment Setup
+
+Use the R setup check before cross-validation:
+
+```bash
+make r-check-env
+```
+
+Install the R dependencies explicitly when the check reports missing packages:
+
+```bash
+make r-setup
+```
+
+Run the cross-check after Python has exported calibrated memberships:
+
+```bash
+make r-crosscheck
+```
