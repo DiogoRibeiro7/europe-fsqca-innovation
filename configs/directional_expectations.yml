@@ -15,9 +15,17 @@
 # `polarity` takes `present`, `absent` or `unconstrained`. It states which value
 # of the condition is expected to contribute to high innovation.
 #
+# `status` takes:
+#   theoretical            - anchored to a specific published argument
+#   provisional            - asserted without a specific anchor
+#   blocked_on_measurement - the construct is not yet defined well enough to
+#                            support any directional claim
+#
 # The canonical intermediate solution is produced by the CRAN QCA package from
 # these expectations. The Python implementation only checks the resulting
 # Boolean structure. See docs/qca_engine_policy.md.
+#
+# Bibliography keys refer to paper/references.bib.
 
 outcome: INN
 
@@ -26,48 +34,61 @@ expectations:
     polarity: present
     justification: >-
       Digital and technological capability is treated as an enabling capability
-      for innovation: it lowers the cost of search, recombination and
-      prototyping. The counterfactual that innovation occurs without it is a
-      difficult one and is not assumed.
+      for innovation. Information technology is argued to be complementary to
+      workplace reorganisation and to the introduction of new products and
+      services, so its presence lowers the cost of search, recombination and
+      prototyping rather than acting independently of them. The counterfactual
+      that innovation occurs in its absence is therefore a difficult one and is
+      not assumed.
     basis: >-
-      Project theory section on capability-based views of firm innovation. To be
-      anchored to specific literature before the intermediate solution is
-      reported.
-    status: provisional
+      Bresnahan, Brynjolfsson and Hitt (2002) find complementarities between
+      information technology, organisational change and new products and
+      services in firm-level factor demand and productivity.
+    references: [bresnahan2002]
+    status: theoretical
 
   HC:
     polarity: present
     justification: >-
-      Absorptive capacity requires skilled labour. Human capital is expected to
-      contribute when present, and the absence of skilled labour is not expected
-      to produce high innovation.
+      Recognising, assimilating and applying external knowledge requires prior
+      related knowledge held by the workforce. A firm without that stock cannot
+      exploit the technological opportunities available to it, so the absence of
+      human capital is not expected to produce high innovation.
     basis: >-
-      Absorptive-capacity argument in the project theory section. To be anchored
-      to specific literature before the intermediate solution is reported.
-    status: provisional
+      Cohen and Levinthal (1990) define absorptive capacity as a function of
+      prior related knowledge and argue that it conditions a firm's ability to
+      exploit external technical information.
+    references: [cohen1990]
+    status: theoretical
 
   FIN:
     polarity: present
     justification: >-
-      Innovation expenditure is uncertain and hard to collateralise, so
-      financing capability is expected to contribute when present.
+      Innovation expenditure is uncertain, largely intangible and hard to
+      collateralise, which makes external finance costly relative to internal
+      funds and leaves financially constrained firms unable to sustain it.
+      Financing capability is therefore expected to contribute when present.
     basis: >-
-      Financing-constraint argument in the project theory section. To be
-      anchored to specific literature before the intermediate solution is
-      reported.
-    status: provisional
+      Hall and Lerner (2010) survey the evidence that R&D faces a funding gap
+      arising from asymmetric information and the intangibility of the assets
+      created. Ayyagari, Demirguc-Kunt and Maksimovic (2011) find external
+      finance associated with firm innovation using Enterprise Survey data,
+      which is the same instrument family analysed here.
+    references: [hall2010, ayyagari2011]
+    status: theoretical
 
   INT:
     polarity: present
     justification: >-
       Exposure to international markets is expected to raise both the return to
       innovation, through market size, and the pressure to innovate, through
-      competition.
+      competition, and to expose the firm to knowledge unavailable domestically.
     basis: >-
-      Learning-by-exporting and competitive-pressure arguments in the project
-      theory section. To be anchored to specific literature before the
-      intermediate solution is reported.
-    status: provisional
+      Salomon and Shaver (2005) find that exporting is followed by increases in
+      firm innovation, consistent with learning by exporting rather than with
+      selection alone.
+    references: [salomon2005]
+    status: theoretical
 
   EXTK:
     polarity: unconstrained
@@ -75,30 +96,45 @@ expectations:
       No direction is asserted. The construct currently bundles foreign
       ownership, international certification and technology licensing, which are
       a governance structure, a quality-assurance practice and a knowledge
-      channel respectively. Until the measurement model resolves which of these
-      the condition actually captures, a directional claim would be a claim
-      about an object that has not been defined.
+      channel respectively. Each has its own expected sign and they need not
+      agree. A directional claim about an object that has not been defined would
+      not be a claim, so the counterfactual is left unconstrained until the
+      measurement model resolves which channel the condition captures.
     basis: >-
       Unresolved measurement concern recorded in configs/wbes_variable_map.yml.
+      This entry is expected to become directional once the construct is split
+      or narrowed.
+    references: []
     status: blocked_on_measurement
 
   MGT:
     polarity: present
     justification: >-
-      Structured management practices are expected to contribute to innovation
-      through target setting and performance monitoring.
-    basis: >-
-      Management-practices literature referenced in the project theory section.
+      Structured management practices, specifically systematic performance
+      monitoring, target setting and incentives, are expected to support
+      innovation by making problems visible and by allocating effort to them.
       Applies only to the restricted management extension sample.
-    status: provisional
+    basis: >-
+      Bloom and Van Reenen (2007) measure management practices across firms and
+      countries on exactly these dimensions and find them associated with firm
+      performance, with wide and persistent variation across countries.
+    references: [bloom2007]
+    status: theoretical
 
-# Every expectation above is `provisional` or `blocked_on_measurement`. None may
-# be used to generate a reported intermediate solution until it is anchored to
-# the literature and the underlying construct is verified against the real
-# questionnaire. Until then the intermediate solution is a development artefact.
+# Five expectations are anchored to specific published arguments. EXTK remains
+# blocked because its construct is not yet defined.
+#
+# The register is NOT frozen. Anchoring the theory was the part that could be
+# completed without the data; freezing additionally requires that the variable
+# mapping be verified, because an expectation about a construct that has not
+# been operationalised cannot be checked against what was actually measured.
 review:
   frozen: false
   freeze_condition: >-
-    All expectations reach status `theoretical` with a specific reference, the
-    variable mapping is verified, and the freeze is recorded before the first
-    canonical truth table is inspected.
+    EXTK is resolved or dropped, the variable mapping is verified against the
+    real EU-27 releases, and the freeze is recorded before the first canonical
+    truth table is inspected.
+  outstanding:
+    - EXTK construct is unresolved, so no direction can be asserted for it
+    - variable mapping is unverified, so no expectation can be checked against
+      an operationalised construct

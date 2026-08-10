@@ -13,6 +13,7 @@ This document records the expected empirical workflow and the honest implementat
 | Outcome definition | **Blocked** | `INN` is declared but not operationalised. | Define from the verified questionnaire, accounting for the three-year reference window. |
 | Calibration anchors | **Blocked** | Placeholder 0 / 0.5 / 1 for every set. | Justify each anchor from the observed distribution and from theory, and record the justification in the config. |
 | Survey design | Ready, unconfigured | Weighted set metrics, three estimands, effective-sample-size row inclusion, weight diagnostics, stratified bootstrap. | Fill `survey.weight_column` and `survey.strata_column` from the release, then set the primary estimand. |
+| Directional expectations | Anchored, not frozen | Five expectations anchored to published arguments; EXTK blocked because its construct bundles three different things. | Resolve or drop EXTK, verify the mapping, then freeze. |
 | Survey timing | Ready, unconfigured | Timing is preserved through calibration; period omission and reference-window reporting are implemented. | Fill `timing.year_column` and declare the periods. |
 | Analytical samples | Ready | Declared samples with filters and a recorded attrition table; MGT isolated in an extension sample. | Replace the placeholder filters with the real screener rules. |
 | Harmonisation checks | Ready | Missingness, impossible values, duplicates, categories, anomalies, exclusion log. | Run against the real table. |

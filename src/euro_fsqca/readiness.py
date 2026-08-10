@@ -20,6 +20,7 @@ from euro_fsqca.expectations import (
     ExpectationError,
     compare_with_config,
     load_expectations,
+    missing_references,
 )
 
 FATAL = "fatal"
@@ -307,6 +308,21 @@ def _check_expectations(config: AnalysisConfig) -> ReadinessItem:
             "the expectation register and the analysis configuration disagree: "
             + "; ".join(problems),
         )
+    dangling = missing_references(register, "paper/references.bib")
+    if dangling:
+        return ReadinessItem(
+            "directional_expectations",
+            FATAL,
+            "cited references are not defined in the bibliography: " + ", ".join(dangling),
+        )
+    unanchored = register.unanchored_conditions
+    if unanchored:
+        return ReadinessItem(
+            "directional_expectations",
+            FATAL,
+            "directional expectations asserted without a published anchor: "
+            + ", ".join(unanchored),
+        )
     if not register.frozen:
         return ReadinessItem(
             "directional_expectations",
@@ -320,6 +336,7 @@ def _check_expectations(config: AnalysisConfig) -> ReadinessItem:
             + "; an intermediate solution derived from unfrozen expectations is a "
             "development artefact, not a result",
         )
+    # Anchored, consistent and frozen.
     return ReadinessItem(
         "directional_expectations",
         OK,
