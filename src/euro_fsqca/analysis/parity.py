@@ -16,10 +16,22 @@ from typing import Literal
 import pandas as pd
 
 ParityStatus = Literal[
-    "PASS", "TOLERANCE_DIFFERENCE", "STRUCTURAL_DIFFERENCE", "MISSING_METRIC", "FAIL"
+    "PASS",
+    "NUMERICAL_TOLERANCE",
+    "ALGORITHM_DIFFERENCE",
+    "FAIL",
+    "TOLERANCE_DIFFERENCE",
+    "STRUCTURAL_DIFFERENCE",
+    "MISSING_METRIC",
 ]
 
 TERM_METRICS = ["consistency", "coverage", "pri"]
+
+#: A difference this small is floating-point noise between two engines.
+NUMERICAL_TOLERANCE = 1e-6
+
+#: Beyond this the engines disagree about the analysis, not about rounding.
+ALGORITHM_TOLERANCE = 1e-3
 
 
 @dataclass(frozen=True)
@@ -140,7 +152,7 @@ def compare_solution_terms(
                     "python_value": float("nan"),
                     "r_value": float("nan"),
                     "difference": float("nan"),
-                    "status": "STRUCTURAL_DIFFERENCE",
+                    "status": "ALGORITHM_DIFFERENCE",
                     "detail": (
                         "term only in Python" if row["_merge"] == "left_only" else "term only in R"
                     ),
@@ -166,7 +178,8 @@ def compare_solution_terms(
             left = float(row[left_column])
             right = float(row[right_column])
             difference = abs(left - right)
-            limit = getattr(limits, metric, 1e-6)
+            limit = getattr(limits, metric, NUMERICAL_TOLERANCE)
+            status = "PASS" if difference <= limit else classify_difference(difference)
             rows.append(
                 {
                     **key,
@@ -174,8 +187,102 @@ def compare_solution_terms(
                     "python_value": left,
                     "r_value": right,
                     "difference": difference,
-                    "status": "PASS" if difference <= limit else "TOLERANCE_DIFFERENCE",
+                    "status": status,
                     "detail": "",
+                }
+            )
+    return pd.DataFrame(rows)
+
+
+def classify_difference(difference: float) -> ParityStatus:
+    """Grade a numerical difference between the two engines."""
+    if difference <= NUMERICAL_TOLERANCE:
+        return "PASS"
+    if difference <= ALGORITHM_TOLERANCE:
+        return "NUMERICAL_TOLERANCE"
+    return "ALGORITHM_DIFFERENCE"
+
+
+def compare_truth_tables(
+    python_table: pd.DataFrame,
+    r_table: pd.DataFrame,
+    *,
+    conditions: list[str],
+) -> pd.DataFrame:
+    """Compare truth tables row by row on membership, frequency and fit.
+
+    The R ``QCA`` package writes one row per configuration with ``OUT``, ``n``,
+    ``incl`` and ``PRI``. Rows are matched on the condition bit pattern, so the
+    comparison is over Boolean structure rather than over printed output.
+    """
+    missing_python = [column for column in conditions if column not in python_table.columns]
+    missing_r = [column for column in conditions if column not in r_table.columns]
+    if missing_python or missing_r:
+        raise KeyError(
+            f"truth tables must share the condition columns; missing "
+            f"Python={missing_python} R={missing_r}"
+        )
+
+    left = python_table.copy()
+    right = r_table.copy()
+    for frame in (left, right):
+        for condition in conditions:
+            frame[condition] = frame[condition].astype(int)
+    merged = left.merge(right, on=conditions, how="outer", suffixes=("_py", "_r"), indicator=True)
+
+    rows: list[dict[str, object]] = []
+    for _, row in merged.iterrows():
+        key = {"row": "".join(str(int(row[condition])) for condition in conditions)}
+        if row["_merge"] != "both":
+            rows.append(
+                {
+                    **key,
+                    "quantity": "row_membership",
+                    "python_value": float("nan"),
+                    "r_value": float("nan"),
+                    "difference": float("nan"),
+                    "status": "ALGORITHM_DIFFERENCE",
+                    "detail": (
+                        "row only in Python" if row["_merge"] == "left_only" else "row only in R"
+                    ),
+                }
+            )
+            continue
+        for quantity, python_column, r_column in (
+            ("frequency", "frequency", "n"),
+            ("consistency", "consistency", "incl"),
+            ("pri", "pri", "PRI"),
+        ):
+            if python_column not in merged.columns or r_column not in merged.columns:
+                continue
+            left_value = float(row[python_column])
+            right_value = float(row[r_column])
+            difference = abs(left_value - right_value)
+            rows.append(
+                {
+                    **key,
+                    "quantity": quantity,
+                    "python_value": left_value,
+                    "r_value": right_value,
+                    "difference": difference,
+                    "status": classify_difference(difference),
+                    "detail": "",
+                }
+            )
+        if "positive" in merged.columns and "OUT" in merged.columns:
+            python_positive = bool(row["positive"])
+            r_positive = str(row["OUT"]).strip() == "1"
+            rows.append(
+                {
+                    **key,
+                    "quantity": "row_inclusion",
+                    "python_value": float(python_positive),
+                    "r_value": float(r_positive),
+                    "difference": float(python_positive != r_positive),
+                    "status": "PASS" if python_positive == r_positive else "ALGORITHM_DIFFERENCE",
+                    "detail": ""
+                    if python_positive == r_positive
+                    else f"Python OUT={int(python_positive)}, R OUT={row['OUT']}",
                 }
             )
     return pd.DataFrame(rows)

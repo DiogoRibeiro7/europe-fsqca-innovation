@@ -78,13 +78,20 @@ def sufficiency_fit(
         return Fit(float("nan"), float("nan"), float("nan"))
 
     intersection = float((w_valid * np.minimum(x_valid, y_valid)).sum())
-    contradiction = float((w_valid * np.minimum(x_valid, 1.0 - y_valid)).sum())
     outcome_total = float((w_valid * y_valid).sum())
+    # Proportional reduction in inconsistency subtracts membership held
+    # simultaneously in the configuration, the outcome and its negation. The
+    # subtracted term is min(x, y, 1 - y), not min(x, 1 - y): the latter counts
+    # ordinary non-membership in the outcome as if it were inconsistency and
+    # drives PRI far below zero.
+    simultaneous = float(
+        (w_valid * np.minimum(np.minimum(x_valid, y_valid), 1.0 - y_valid)).sum()
+    )
     consistency = intersection / denominator
     coverage = intersection / outcome_total if not np.isclose(outcome_total, 0.0) else float("nan")
-    pri_denominator = denominator - contradiction
+    pri_denominator = denominator - simultaneous
     pri = (
-        (intersection - contradiction) / pri_denominator if pri_denominator > 0 else float("nan")
+        (intersection - simultaneous) / pri_denominator if pri_denominator > 0 else float("nan")
     )
     return Fit(consistency=consistency, coverage=coverage, pri=pri)
 

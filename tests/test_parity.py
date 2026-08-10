@@ -55,7 +55,7 @@ def test_compare_solution_terms_matches_engines_term_by_term() -> None:
     matched = comparison[comparison["configuration"] == "DIG*HC"]
     assert set(matched["status"]) == {"PASS"}
     # The second term differs structurally: ~FIN in Python versus ~DIG*~FIN in R.
-    assert "STRUCTURAL_DIFFERENCE" in set(comparison["status"])
+    assert "ALGORITHM_DIFFERENCE" in set(comparison["status"])
     assert not parity_passed(comparison)
 
 
@@ -69,7 +69,7 @@ def test_compare_solution_terms_flags_metric_disagreement() -> None:
 
     comparison = compare_solution_terms(python, r, metrics=["consistency"])
 
-    assert comparison.loc[0, "status"] == "TOLERANCE_DIFFERENCE"
+    assert comparison.loc[0, "status"] == "ALGORITHM_DIFFERENCE"
 
 
 def test_load_engine_outputs_normalises_configurations(tmp_path: Path) -> None:
@@ -139,3 +139,49 @@ def test_parity_status_summary_counts_statuses() -> None:
     summary = parity_status_summary(comparison)
 
     assert dict(zip(summary["status"], summary["n"], strict=True)) == {"FAIL": 1, "PASS": 2}
+
+
+def test_truth_table_comparison_matches_rows_on_boolean_structure() -> None:
+    from euro_fsqca.analysis.parity import compare_truth_tables
+
+    python_table = pd.DataFrame(
+        {
+            "DIG": [0, 1],
+            "HC": [0, 1],
+            "frequency": [10, 20],
+            "consistency": [0.5, 0.9],
+            "pri": [0.2, 0.8],
+            "positive": [False, True],
+        }
+    )
+    r_table = pd.DataFrame(
+        {"DIG": [0, 1], "HC": [0, 1], "n": [10, 20], "incl": [0.5, 0.9], "PRI": [0.2, 0.8],
+         "OUT": [0, 1]}
+    )
+
+    result = compare_truth_tables(python_table, r_table, conditions=["DIG", "HC"])
+
+    assert set(result["status"]) == {"PASS"}
+    assert "row_inclusion" in set(result["quantity"])
+
+
+def test_truth_table_comparison_flags_disagreeing_row_inclusion() -> None:
+    from euro_fsqca.analysis.parity import compare_truth_tables
+
+    python_table = pd.DataFrame(
+        {"DIG": [1], "frequency": [20], "consistency": [0.9], "pri": [0.4], "positive": [False]}
+    )
+    r_table = pd.DataFrame({"DIG": [1], "n": [20], "incl": [0.9], "PRI": [0.4], "OUT": [1]})
+
+    result = compare_truth_tables(python_table, r_table, conditions=["DIG"])
+
+    inclusion = result[result["quantity"] == "row_inclusion"].iloc[0]
+    assert inclusion["status"] == "ALGORITHM_DIFFERENCE"
+
+
+def test_difference_grading_separates_rounding_from_disagreement() -> None:
+    from euro_fsqca.analysis.parity import classify_difference
+
+    assert classify_difference(1e-12) == "PASS"
+    assert classify_difference(1e-5) == "NUMERICAL_TOLERANCE"
+    assert classify_difference(0.4) == "ALGORITHM_DIFFERENCE"
