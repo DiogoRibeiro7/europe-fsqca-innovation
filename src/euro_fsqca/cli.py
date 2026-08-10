@@ -19,7 +19,7 @@ from euro_fsqca.data.mapping import (
 from euro_fsqca.data.provenance import ManifestValidationError, raise_for_manifest_errors
 from euro_fsqca.data.provenance import validate_manifest as validate_source_manifest
 from euro_fsqca.data.schema import (
-    schema_audit_from_manifest,
+    schema_artifacts_from_manifest,
     schema_report,
     variable_coverage_from_manifest,
 )
@@ -78,10 +78,16 @@ def audit_schema(
     ),
     max_values: Annotated[int, typer.Option(min=1, is_flag=False)] = 20,
 ) -> None:
-    """Compare schemas across all source files recorded in the manifest."""
-    frame = schema_audit_from_manifest(manifest, raw_root=root, max_values=max_values)
-    write_table(frame, output)
-    typer.echo(f"Schema audit written to {output}")
+    """Compare schemas across all source files recorded in the manifest.
+
+    Variable and value labels are read from Stata and SPSS sources, because a
+    WBES variable name alone does not identify what was asked.
+    """
+    paths = schema_artifacts_from_manifest(
+        manifest, raw_root=root, output_dir=output.parent, max_values=max_values
+    )
+    for name, path in paths.items():
+        typer.echo(f"Schema {name} written to {path}")
 
 
 @app.command("variable-audit")

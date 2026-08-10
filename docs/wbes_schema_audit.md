@@ -1,5 +1,42 @@
 # WBES Schema Audit
 
+## Labels are read, not guessed
+
+A WBES variable name says almost nothing. `h1` and `wk2` are only interpretable
+through the question text the release carries as a variable label, and their
+numeric codes only through the value labels. Stata and SPSS sources are read
+through `pyreadstat` so both survive into the audit.
+
+CSV and Parquet carry no such metadata. They are reported as unlabelled rather
+than given invented labels.
+
+## Artifacts
+
+```bash
+make schema-audit
+```
+
+| File | Content |
+| --- | --- |
+| `outputs/data/wbes_schema_inventory.parquet` | Per source and variable: label, value labels, dtype, observed values, potential missing codes, non-missing count. |
+| `outputs/data/wbes_schema_comparison.csv` | Cross-source view: how many countries carry the variable, how many populate it usably, and whether the label agrees. |
+| `outputs/data/schema_audit.csv` | The inventory in CSV, which is what the readiness check reads. |
+
+## The label-agreement column
+
+`label_agreement` is the column to read first:
+
+| Value | Meaning |
+| --- | --- |
+| `identical` | Every source that carries the variable asks the same question. |
+| `conflicting` | The same variable name asks a different question in different releases. |
+| `no_label` | No source carries question text for it. |
+
+`conflicting` is the dangerous case. A variable present in every country with a
+consistent name and an inconsistent question looks comparable and is not.
+Mapping it on the strength of its name would put a different measurement in the
+same construct for different countries.
+
 The schema audit compares all source files listed in `data/manifest.csv`. It is designed to support variable mapping without assuming that matching column names have matching meaning.
 
 ## Command

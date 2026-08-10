@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from euro_fsqca.data.io import read_table
+from euro_fsqca.data.io import read_table_with_metadata
 from euro_fsqca.data.provenance import ManifestEntry, load_manifest
 
 SCHEMA_AUDIT_COLUMNS = [
@@ -19,6 +19,7 @@ SCHEMA_AUDIT_COLUMNS = [
     "wbes_version",
     "column",
     "label",
+    "value_labels",
     "dtype",
     "valid_values",
     "missing_value_codes",
@@ -63,6 +64,7 @@ class SchemaDataset:
     wbes_version: str
     frame: pd.DataFrame
     labels: dict[str, str] | None = None
+    value_labels: dict[str, dict[object, str]] | None = None
 
 
 def schema_report(frame: pd.DataFrame) -> pd.DataFrame:
@@ -104,6 +106,36 @@ def _potential_missing_codes(series: pd.Series) -> str:
     return _json_list(sorted(observed))
 
 
+def _value_label_json(mapping: dict[object, str] | None) -> str:
+    """Render value labels as sorted JSON so codes stay interpretable."""
+    if not mapping:
+        return ""
+    return json.dumps(
+        {str(code): str(label) for code, label in mapping.items()},
+        ensure_ascii=True,
+        sort_keys=True,
+    )
+
+
+def label_agreement(datasets: Sequence[SchemaDataset], column: str) -> str:
+    """Describe whether a variable carries the same label in every source.
+
+    A shared name with different question text is the most dangerous case in a
+    multi-country audit: it looks comparable and is not.
+    """
+    labels = {
+        (dataset.labels or {}).get(column, "").strip()
+        for dataset in datasets
+        if column in dataset.frame.columns
+    }
+    labels.discard("")
+    if not labels:
+        return "no_label"
+    if len(labels) == 1:
+        return "identical"
+    return "conflicting"
+
+
 def _availability(presence_count: int, total_sources: int) -> str:
     if total_sources == 0 or presence_count == 0:
         return "absent"
@@ -130,6 +162,7 @@ def schema_audit(datasets: Sequence[SchemaDataset], *, max_values: int = 20) -> 
     for dataset in datasets:
         n_rows = len(dataset.frame)
         labels = dataset.labels or {}
+        value_labels = dataset.value_labels or {}
         for column in all_columns:
             present = presence[column]
             presence_count = len(present)
@@ -170,6 +203,7 @@ def schema_audit(datasets: Sequence[SchemaDataset], *, max_values: int = 20) -> 
                     "wbes_version": dataset.wbes_version,
                     "column": column,
                     "label": labels.get(column, ""),
+                    "value_labels": _value_label_json(value_labels.get(column)),
                     "dtype": str(series.dtype),
                     "valid_values": _valid_values(series, max_values=max_values),
                     "missing_value_codes": _potential_missing_codes(series),
@@ -295,7 +329,15 @@ def load_manifest_datasets(
             source_path = raw_root_path / source_path
         if not source_path.exists():
             raise FileNotFoundError(f"missing source file: {source_path}")
-        datasets.append(_dataset_from_manifest_entry(entry, read_table(source_path)))
+        labelled = read_table_with_metadata(source_path)
+        datasets.append(
+            _dataset_from_manifest_entry(
+                entry,
+                labelled.frame,
+                labels=labelled.metadata.column_labels,
+                value_labels=labelled.metadata.value_labels,
+            )
+        )
     return datasets
 
 
@@ -310,6 +352,59 @@ def schema_audit_from_manifest(
     return schema_audit(datasets, max_values=max_values)
 
 
+def write_schema_artifacts(
+    datasets: Sequence[SchemaDataset],
+    *,
+    output_dir: str | Path = "outputs/data",
+    max_values: int = 20,
+    min_non_missing_share: float = 0.5,
+) -> dict[str, Path]:
+    """Write the schema inventory, comparison and coverage matrix.
+
+    The inventory is the per-source record of every variable as the release
+    actually carries it, including its label and value labels. The comparison
+    is the cross-source view used to decide what is genuinely comparable.
+    """
+    target = Path(output_dir)
+    target.mkdir(parents=True, exist_ok=True)
+    inventory = schema_audit(datasets, max_values=max_values)
+    comparison = variable_coverage_matrix(
+        datasets, min_non_missing_share=min_non_missing_share
+    )
+    if not comparison.empty:
+        comparison["label_agreement"] = comparison["column"].map(
+            lambda column: label_agreement(datasets, str(column))
+        )
+
+    paths = {
+        "inventory": target / "wbes_schema_inventory.parquet",
+        "comparison": target / "wbes_schema_comparison.csv",
+        "audit": target / "schema_audit.csv",
+    }
+    inventory.to_parquet(paths["inventory"], index=False)
+    comparison.to_csv(paths["comparison"], index=False)
+    inventory.to_csv(paths["audit"], index=False)
+    return paths
+
+
+def schema_artifacts_from_manifest(
+    manifest_path: str | Path,
+    *,
+    raw_root: str | Path = "data/raw",
+    output_dir: str | Path = "outputs/data",
+    max_values: int = 20,
+    min_non_missing_share: float = 0.5,
+) -> dict[str, Path]:
+    """Load manifest sources and write every schema-audit artifact."""
+    datasets = load_manifest_datasets(manifest_path, raw_root=raw_root)
+    return write_schema_artifacts(
+        datasets,
+        output_dir=output_dir,
+        max_values=max_values,
+        min_non_missing_share=min_non_missing_share,
+    )
+
+
 def variable_coverage_from_manifest(
     manifest_path: str | Path,
     *,
@@ -321,11 +416,19 @@ def variable_coverage_from_manifest(
     return variable_coverage_matrix(datasets, min_non_missing_share=min_non_missing_share)
 
 
-def _dataset_from_manifest_entry(entry: ManifestEntry, frame: pd.DataFrame) -> SchemaDataset:
+def _dataset_from_manifest_entry(
+    entry: ManifestEntry,
+    frame: pd.DataFrame,
+    *,
+    labels: dict[str, str] | None = None,
+    value_labels: dict[str, dict[object, str]] | None = None,
+) -> SchemaDataset:
     return SchemaDataset(
         source_name=entry.source_name,
         country=entry.country,
         survey_year=entry.survey_year,
         wbes_version=entry.wbes_version,
         frame=frame,
+        labels=labels,
+        value_labels=value_labels,
     )
