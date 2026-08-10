@@ -1,7 +1,5 @@
 """Command-line interface for the European fsQCA research pipeline."""
 
-from __future__ import annotations
-
 from pathlib import Path
 from typing import Annotated
 
@@ -30,8 +28,8 @@ app = typer.Typer(no_args_is_help=True, help="European firm-innovation fsQCA res
 
 @app.command()
 def inspect(
-    input: Annotated[Path, typer.Option("--input", help="Input microdata file.")],
-    output: Annotated[Path, typer.Option("--output")] = Path("results/schema.csv"),
+    input: Annotated[Path, typer.Option(help="Input microdata file.", is_flag=False)],
+    output: Annotated[Path, typer.Option(is_flag=False)] = Path("results/schema.csv"),
 ) -> None:
     """Inspect a microdata file and write a privacy-safe schema report."""
     frame = read_table(input)
@@ -53,8 +51,8 @@ def demo(
 
 @app.command("validate-data")
 def validate_data(
-    manifest: Annotated[Path, typer.Option("--manifest")] = Path("data/manifest.csv"),
-    root: Annotated[Path, typer.Option("--root")] = Path("data/raw"),
+    manifest: Annotated[Path, typer.Option(is_flag=False)] = Path("data/manifest.csv"),
+    root: Annotated[Path, typer.Option(is_flag=False)] = Path("data/raw"),
 ) -> None:
     """Validate source files recorded in the data manifest."""
     try:
@@ -68,10 +66,12 @@ def validate_data(
 
 @app.command("schema-audit")
 def audit_schema(
-    manifest: Annotated[Path, typer.Option("--manifest")] = Path("data/manifest.csv"),
-    root: Annotated[Path, typer.Option("--root")] = Path("data/raw"),
-    output: Annotated[Path, typer.Option("--output")] = Path("outputs/data/schema_audit.csv"),
-    max_values: Annotated[int, typer.Option("--max-values", min=1)] = 20,
+    manifest: Annotated[Path, typer.Option(is_flag=False)] = Path("data/manifest.csv"),
+    root: Annotated[Path, typer.Option(is_flag=False)] = Path("data/raw"),
+    output: Annotated[Path, typer.Option(is_flag=False)] = Path(
+        "outputs/data/schema_audit.csv"
+    ),
+    max_values: Annotated[int, typer.Option(min=1, is_flag=False)] = 20,
 ) -> None:
     """Compare schemas across all source files recorded in the manifest."""
     frame = schema_audit_from_manifest(manifest, raw_root=root, max_values=max_values)
@@ -81,9 +81,13 @@ def audit_schema(
 
 @app.command("validate-mapping")
 def validate_mapping(
-    mapping: Annotated[Path, typer.Option("--mapping")] = Path("configs/wbes_variable_map.yml"),
-    output: Annotated[Path, typer.Option("--output")] = Path("outputs/data/mapping_coverage.csv"),
-    require_main_ready: Annotated[bool, typer.Option("--require-main-ready")] = False,
+    mapping: Annotated[Path, typer.Option(is_flag=False)] = Path(
+        "configs/wbes_variable_map.yml"
+    ),
+    output: Annotated[Path, typer.Option(is_flag=False)] = Path(
+        "outputs/data/mapping_coverage.csv"
+    ),
+    require_main_ready: bool = typer.Option(False, "--require-main-ready"),
 ) -> None:
     """Validate WBES variable mappings and write construct coverage."""
     try:
@@ -103,7 +107,7 @@ def validate_mapping(
 
 @app.command("validate-spec")
 def validate_spec(
-    spec: Annotated[Path, typer.Option("--spec")] = Path("configs/research_spec.yml"),
+    spec: Annotated[Path, typer.Option(is_flag=False)] = Path("configs/research_spec.yml"),
 ) -> None:
     """Validate the study-level specification."""
     loaded_spec = load_research_spec(spec)
@@ -119,11 +123,11 @@ def validate_spec(
 
 @app.command("check-harmonisation")
 def check_harmonisation(
-    input: Annotated[Path, typer.Option("--input", help="Harmonised analytical table.")],
-    report_output: Annotated[Path, typer.Option("--report-output")] = Path(
+    input: Annotated[Path, typer.Option(help="Harmonised analytical table.", is_flag=False)],
+    report_output: Annotated[Path, typer.Option(is_flag=False)] = Path(
         "outputs/data/harmonisation_report.csv"
     ),
-    exclusion_output: Annotated[Path, typer.Option("--exclusion-output")] = Path(
+    exclusion_output: Annotated[Path, typer.Option(is_flag=False)] = Path(
         "outputs/data/exclusion_log.csv"
     ),
 ) -> None:
@@ -137,9 +141,9 @@ def check_harmonisation(
 
 @app.command("construct-diagnostics")
 def diagnose_constructs(
-    input: Annotated[Path, typer.Option("--input", help="Pre-calibration table.")],
-    config: Annotated[Path, typer.Option("--config")] = Path("configs/analysis.yml"),
-    output_dir: Annotated[Path, typer.Option("--output-dir")] = Path("outputs/constructs"),
+    input: Annotated[Path, typer.Option(help="Pre-calibration table.", is_flag=False)],
+    config: Annotated[Path, typer.Option(is_flag=False)] = Path("configs/analysis.yml"),
+    output_dir: Annotated[Path, typer.Option(is_flag=False)] = Path("outputs/constructs"),
 ) -> None:
     """Write pre-calibration construct diagnostics."""
     frame = read_table(input)
@@ -150,9 +154,9 @@ def diagnose_constructs(
 
 @app.command("calibration-diagnostics")
 def diagnose_calibration(
-    input: Annotated[Path, typer.Option("--input", help="Pre-calibration table.")],
-    config: Annotated[Path, typer.Option("--config")] = Path("configs/analysis.yml"),
-    output_dir: Annotated[Path, typer.Option("--output-dir")] = Path("outputs/calibration"),
+    input: Annotated[Path, typer.Option(help="Pre-calibration table.", is_flag=False)],
+    config: Annotated[Path, typer.Option(is_flag=False)] = Path("configs/analysis.yml"),
+    output_dir: Annotated[Path, typer.Option(is_flag=False)] = Path("outputs/calibration"),
 ) -> None:
     """Write calibration diagnostics for configured fuzzy sets."""
     frame = read_table(input)
@@ -163,9 +167,9 @@ def diagnose_calibration(
 
 @app.command()
 def run(
-    input: Annotated[Path, typer.Option("--input", help="Canonical analysis table.")],
-    config: Annotated[Path, typer.Option("--config")] = Path("configs/analysis.yml"),
-    output_dir: Annotated[Path, typer.Option("--output-dir")] = Path("results/main"),
+    input: Annotated[Path, typer.Option(help="Canonical analysis table.", is_flag=False)],
+    config: Annotated[Path, typer.Option(is_flag=False)] = Path("configs/analysis.yml"),
+    output_dir: Annotated[Path, typer.Option(is_flag=False)] = Path("results/main"),
 ) -> None:
     """Run the configured fsQCA analysis."""
     frame = read_table(input)

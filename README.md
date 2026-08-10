@@ -65,6 +65,7 @@ The synthetic demo exists only to validate the computational pipeline. It must n
 
 ```bash
 poetry install
+make validate-spec
 make run-demo
 ```
 
@@ -160,6 +161,10 @@ make check
 ```
 
 The test suite covers calibration anchors, fuzzy-set fit parameters, regional assignment, truth-table construction, minimisation, and an end-to-end synthetic run.
+
+## Reproducibility commands
+
+The canonical command list is maintained in `docs/reproducibility_commands.md`. Use `make run-demo` for a synthetic pipeline check, and use `make validate-data`, `make schema-audit`, `make validate-mapping`, `make check-harmonisation`, `make construct-diagnostics`, `make calibration-diagnostics`, and `make run-main` after the licensed WBES files and analytical table are available locally.
 
 ## Manuscript
 
