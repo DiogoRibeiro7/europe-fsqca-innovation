@@ -1,15 +1,41 @@
 \section{Results}
 
 \subsection{Pan-European analysis}
-% Insert generated necessity, truth-table, and solution results only after the
-% empirical configuration is frozen.
+
+Populate this subsection only from generated outputs under
+\texttt{results/main/europe/}. The required artifacts are the necessity table,
+truth table, contradictory-row diagnostics, diversity diagnostics, and solution
+terms for the outcome and its negation.
 
 \subsection{Regional configurations}
-% Compare Northern/Western, Southern, and Central/Eastern solutions.
+
+Compare Northern/Western, Southern, and Central/Eastern solutions using the same
+Europe-wide calibration anchors. Do not alter regional membership after viewing
+solution patterns.
 
 \subsection{Portability of European configurations}
-% Report regional consistency, coverage, PRI, and heterogeneity diagnostics for
-% each unchanged pan-European sufficient term.
+
+Report regional consistency, coverage, PRI, and heterogeneity diagnostics for
+each unchanged pan-European sufficient term.
 
 \subsection{Causal asymmetry}
-% Compare high-innovation and low-innovation solution structures.
+
+Compare high-innovation and low-innovation solution structures without assuming
+that one is the logical inverse of the other.
+
+\subsection{Generated table register}
+
+\begin{longtable}{ll}
+\toprule
+Manuscript table & Source artifact \\
+\midrule
+\endhead
+Sample and construct coverage & \texttt{outputs/data/harmonisation\_report.csv} \\
+Calibration diagnostics & \texttt{outputs/calibration/calibration\_summary.csv} \\
+Necessity diagnostics & \texttt{results/main/europe/necessity.csv} \\
+Truth table diagnostics & \texttt{results/main/europe/truth\_table\_diagnostics.csv} \\
+Solution terms & \texttt{results/main/europe/solution\_terms.csv} \\
+Regional comparison & \texttt{results/main/regional\_comparison.csv} \\
+Portability & \texttt{results/main/portability\_directed.csv} \\
+\bottomrule
+\end{longtable}

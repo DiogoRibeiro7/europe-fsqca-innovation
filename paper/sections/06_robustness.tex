@@ -2,3 +2,20 @@
 
 Report threshold sweeps, calibration-anchor perturbations, alternative regional
 taxonomies, timing restrictions, and the cross-software QCA validation.
+
+\begin{longtable}{ll}
+\toprule
+Check & Source artifact \\
+\midrule
+\endhead
+Anchor sensitivity & \texttt{results/main/calibration\_sensitivity.csv} \\
+Threshold sensitivity & \texttt{results/main/threshold\_sensitivity.csv} \\
+Country omission & \texttt{results/main/leave\_one\_country\_out.csv} \\
+Bootstrap stability & \texttt{results/main/bootstrap\_stability.csv} \\
+Truth-table diversity & \texttt{results/main/europe/diversity\_diagnostics.csv} \\
+R validation & \texttt{results/r\_validation/solutions.csv} \\
+\bottomrule
+\end{longtable}
+
+Any robustness result based only on synthetic data must be labelled as a
+pipeline check and excluded from substantive interpretation.
