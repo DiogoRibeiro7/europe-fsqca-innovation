@@ -269,3 +269,9 @@ docker run --rm europe-fsqca-innovation --help
 ```
 
 Mount licensed microdata at runtime rather than copying it into the image.
+
+## Licence
+
+Code is [MIT](LICENSE). Data, derived tables and manuscript text are
+[CC BY 4.0](LICENSE-DATA.md). Third-party source data keeps its provider's terms — see
+[`LICENSE-DATA.md`](LICENSE-DATA.md).
